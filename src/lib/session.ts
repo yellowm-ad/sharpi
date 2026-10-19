@@ -88,8 +88,3 @@ function useSession(): State {
 export function useUser(): SessionUser | null {
   return useSession().user;
 }
-
-/** 세션 확인이 끝났는지 — 로그인 여부로 화면을 가를 때 깜빡임 방지용 */
-export function useSessionLoaded(): boolean {
-  return useSession().loaded;
-}

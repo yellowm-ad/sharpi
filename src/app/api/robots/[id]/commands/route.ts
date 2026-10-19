@@ -3,6 +3,7 @@ import { db, hasDb, noDb } from "@/db";
 import { robotCommands } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { CommandSchema } from "@/lib/robot/types";
+import { requireRobotOwner } from "@/lib/robot/auth";
 
 /** POST /api/robots/:id/commands — 앱이 명령을 큐에 넣는다 */
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
@@ -10,7 +11,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const { id } = await ctx.params;
   const robotId = Number(id);
 
-  // TODO(M1): 세션 인증 — 로봇 소유자만 명령 가능
+  const denied = await requireRobotOwner(robotId);
+  if (denied) return denied;
   const parsed = CommandSchema.safeParse(await req.json());
   if (!parsed.success) {
     return NextResponse.json({ error: "invalid command" }, { status: 422 });
@@ -28,6 +30,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   if (!hasDb) return noDb();
   const { id } = await ctx.params;
+  const denied = await requireRobotOwner(Number(id));
+  if (denied) return denied;
   const rows = await db
     .select()
     .from(robotCommands)

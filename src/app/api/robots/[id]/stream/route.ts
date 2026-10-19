@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { db, hasDb, noDb } from "@/db";
 import { robotTelemetry } from "@/db/schema";
 import { eq, gt, and, asc } from "drizzle-orm";
+import { requireRobotOwner } from "@/lib/robot/auth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300; // Hobby 플랜 상한. 끊기면 EventSource가 자동 재연결한다.
@@ -18,7 +19,9 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   const { id } = await ctx.params;
   const robotId = Number(id);
 
-  // TODO(M1): 세션 인증 — 이 로봇의 소유자인지 확인
+  const denied = await requireRobotOwner(robotId);
+  if (denied) return denied;
+
   const lastEventId = req.headers.get("last-event-id");
   let lastId = lastEventId ? Number(lastEventId) : 0;
 

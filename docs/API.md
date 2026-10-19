@@ -125,7 +125,6 @@ data: {"id":1042,"robotId":1,"ts":"...","mode":"follow",...}
 | Method | Path | 설명 | 상태 |
 |---|---|---|---|
 | GET | `/api/weather?lat=&lng=` | 기상청 프록시 + Walk Score | **구현 완료** |
-| GET | `/api/air?lat=&lng=` | 에어코리아 프록시 | M5 |
 | GET | `/api/crowd` | **명목상** — mock 반환 | **구현 완료** |
 
 ### GET /api/weather

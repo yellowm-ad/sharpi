@@ -78,6 +78,8 @@ def main():
     print("[회원]")
     a, b = Client(), Client()
     ua = ensure_user(a, ENV["QA_USER"], pw, "QA산책러")
+    global a_client
+    a_client = a
     ub = ensure_user(b, ENV["QA_USER2"], pw, "QA콩이맘")
     check(ua and ub, "QA 계정 2개 로그인")
     s, j = a.req("GET", "/api/me")
@@ -176,6 +178,16 @@ def main():
     check(s == 401, "로봇 키 없는 텔레메트리 → 401")
     s, _ = g.req("GET", "/api/robots/1/commands/pending")
     check(s == 401, "로봇 키 없는 명령 폴링 → 401")
+    s, _ = g.req("POST", "/api/robots/1/commands", {"type": "ESTOP"})
+    check(s == 401, "게스트 로봇 명령 → 401")
+    s, _ = a_client.req("POST", "/api/robots/1/commands", {"type": "START_FOLLOW"})
+    check(s == 403, "남의 로봇 명령 → 403")
+    s, _ = g.req("GET", "/api/robots/1/stream")
+    check(s == 401, "게스트 로봇 스트림 → 401")
+
+    print("[도배 방지]")
+    codes = [a_client.req("POST", f"/api/community/rooms/{room}/messages", {"content": f"QA 도배 {i}"})[0] for i in range(6)]
+    check(codes[-1] == 429 and codes.count(201) <= 5, "10초 5개 초과 → 429", str(codes))
 
     print("[날씨]")
     s, j = g.req("GET", "/api/weather?lat=35.8486&lng=127.1229")

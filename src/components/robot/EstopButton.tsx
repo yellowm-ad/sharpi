@@ -62,7 +62,7 @@ export default function EstopButton({ robotId, disabled }: { robotId: number; di
         disabled={disabled || status === "sending"}
         aria-label="비상 정지 (1초간 길게 누르기)"
         className={[
-          "touch relative h-20 w-20 select-none whitespace-pre-line rounded-full text-sm font-bold leading-tight text-white shadow-lg shadow-level-3/40 ring-4 ring-white transition",
+          "touch relative h-20 w-20 touch-none select-none whitespace-pre-line rounded-full text-sm font-bold leading-tight text-white shadow-lg shadow-level-3/40 ring-4 ring-white transition",
           "disabled:opacity-40",
           holding ? "scale-95 bg-level-3" : "bg-level-3",
         ].join(" ")}

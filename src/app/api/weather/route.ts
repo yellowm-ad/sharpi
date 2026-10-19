@@ -5,9 +5,6 @@ import { calcWalkScore, type WeatherInput } from "@/lib/weather/walk-score";
 export const revalidate = 1800; // 30분 캐시 — 공공데이터 일일 호출 한도 보호
 
 const KMA = "https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0";
-const AIR = "https://apis.data.go.kr/B552584/ArpltnInforInqireSvc/getMsrstnAcctoRltmMesureDnsty";
-/** 에어코리아 측정소 — 덕진공원·전북대에서 가장 가까운 곳 */
-const AIR_STATION = "덕진동";
 
 type KmaItem = { category: string; obsrValue?: string; fcstValue?: string; fcstDate?: string; fcstTime?: string };
 
@@ -38,9 +35,9 @@ async function getJson(url: string) {
 
 /**
  * GET /api/weather?lat=&lng=
- * 기상청 초단기실황 + 단기예보, 에어코리아 PM2.5 를 프록시하고 산책적합도를 계산한다.
+ * 기상청 초단기실황 + 단기예보를 프록시하고 산책적합도를 계산한다. (미세먼지는 2026-10-19 제외 결정)
  * 서비스키는 서버 환경변수에만 두고 클라이언트에 노출하지 않는다.
- * 실황이 실패하면 502, 예보·대기질은 실패해도 나머지로 계산한다. (PRD F-5 수용기준)
+ * 실황이 실패하면 502, 예보는 실패해도 실황만으로 계산한다. (PRD F-5 수용기준)
  */
 export async function GET(req: NextRequest) {
   const lat = Number(req.nextUrl.searchParams.get("lat"));
@@ -63,16 +60,14 @@ export async function GET(req: NextRequest) {
   const vil = getVillageBaseDateTime();
   const kstHour = new Date(Date.now() + 9 * 3600 * 1000).getUTCHours();
 
-  const [ncst, fcst, air] = await Promise.allSettled([
+  const [ncst, fcst] = await Promise.allSettled([
     getJson(`${KMA}/getUltraSrtNcst?serviceKey=${sk}&numOfRows=10&pageNo=1&dataType=JSON&base_date=${now.baseDate}&base_time=${now.baseTime}&nx=${nx}&ny=${ny}`),
     getJson(`${KMA}/getVilageFcst?serviceKey=${sk}&numOfRows=300&pageNo=1&dataType=JSON&base_date=${vil.baseDate}&base_time=${vil.baseTime}&nx=${nx}&ny=${ny}`),
-    getJson(`${AIR}?serviceKey=${sk}&returnType=json&numOfRows=1&pageNo=1&stationName=${encodeURIComponent(AIR_STATION)}&dataTerm=DAILY&ver=1.3`),
   ]);
 
   const status = {
     kmaNow: ncst.status === "fulfilled" ? "ok" : String((ncst as PromiseRejectedResult).reason?.message ?? "fail"),
     kmaForecast: fcst.status === "fulfilled" ? "ok" : String((fcst as PromiseRejectedResult).reason?.message ?? "fail"),
-    air: air.status === "fulfilled" ? "ok" : String((air as PromiseRejectedResult).reason?.message ?? "fail"),
   };
 
   if (ncst.status !== "fulfilled") {
@@ -102,19 +97,12 @@ export async function GET(req: NextRequest) {
   // PTY(강수형태) 실황이 비/눈이면 강수확률을 100으로 본다
   if (pick("PTY") > 0) pop = 100;
 
-  let pm25: number | null = null;
-  if (air.status === "fulfilled") {
-    const v = Number(air.value?.response?.body?.items?.[0]?.pm25Value);
-    if (Number.isFinite(v)) pm25 = v;
-  }
-
   const input: WeatherInput = {
     tempC: pick("T1H"),
     humidity: pick("REH"),
     windMs: pick("WSD"),
     popPercent: pop,
     skyCode: sky,
-    pm25,
     uvIndex: null, // TODO(M5): 생활기상지수 자외선
     hour: kstHour,
   };
@@ -126,9 +114,8 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     grid: { nx, ny },
     base: { now, village: vil },
-    station: AIR_STATION,
     status,
     raw: input,
     walkScore: calcWalkScore(input),
-  });
+  }, { headers: { "Cache-Control": "public, s-maxage=600, stale-while-revalidate=1200" } });
 }

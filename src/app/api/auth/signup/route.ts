@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { check as hasProfanity } from "korcen";
+import { containsProfanity } from "@/lib/profanity";
 import { db, hasDb, noDb } from "@/db";
 import { users } from "@/db/schema";
 import { NicknameSchema, PasswordSchema, UsernameSchema, sessionCookie } from "@/lib/auth";
@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
   const { username, password, nickname } = parsed.data;
 
   // 아이디·닉네임은 계속 노출되므로 비속어면 아예 막는다 (먹메이트 정책)
-  if (hasProfanity(username) || hasProfanity(nickname)) {
+  if (containsProfanity(username) || containsProfanity(nickname)) {
     return NextResponse.json({ error: "아이디나 닉네임에 쓸 수 없는 표현이 있어요" }, { status: 422 });
   }
 

@@ -30,7 +30,7 @@ export function sessionCookie(userId: number) {
   return {
     name: SESSION_COOKIE,
     value: `${payload}.${sign(payload)}`,
-    options: { httpOnly: true, sameSite: "lax" as const, secure: process.env.NODE_ENV === "production", path: "/", maxAge: TTL_S },
+    options: { httpOnly: true, sameSite: "lax" as const, secure: process.env.VERCEL === "1", path: "/", maxAge: TTL_S },
   };
 }
 

@@ -2,9 +2,8 @@
  * 산책적합도(Walk Score) — 사람 기준 날씨를 "반려견 기준"으로 환산한다.
  *
  * ⚠️ 주의 (PRD §17)
- * 수의학적 근거가 확실한 것은 두 가지뿐이다.
- *   ① 지면 52℃ 이상에서 발바닥 화상 위험 ("손등 7초 규칙"에 대응)
- *   ② PM2.5 한국 환경기준 구간
+ * 수의학적 근거가 확실한 것은 지면 52℃ 이상에서 발바닥 화상 위험("손등 7초 규칙")뿐이다.
+ * 미세먼지(PM2.5)는 2026-10-19 범위에서 제외했다.
  * 나머지 감점 배분은 팀이 설계한 자체 지표이며 검증된 공식이 아니다.
  * 지면온도 추정 계수 k = 25℃ 역시 일반적으로 인용되는 값으로, 전주 지역
  * 노면 실측으로 보정이 필요하다. 발표 시 "자체 설계 지표"로 밝힐 것.
@@ -20,7 +19,6 @@ export interface WeatherInput {
   windMs: number;       // 풍속 m/s
   popPercent: number;   // 강수확률 %
   skyCode: 1 | 3 | 4;   // 1 맑음 / 3 구름많음 / 4 흐림
-  pm25?: number | null; // ㎍/㎥
   uvIndex?: number | null;
   hour: number;         // KST 0~23
 }
@@ -95,18 +93,11 @@ export function calcWalkScore(w: WeatherInput): WalkScoreResult {
   else if (feelsLikeC <= -5) { penalty += 20; reasons.push(`체감 ${feelsLikeC.toFixed(0)}℃ — 추위 주의`); }
   else if (feelsLikeC <= 0) { penalty += 8; reasons.push("쌀쌀해요"); }
 
-  // ③ 대기질 (PM2.5 한국 환경기준)
-  if (w.pm25 != null) {
-    if (w.pm25 >= 76) { penalty += 50; reasons.push(`초미세먼지 ${w.pm25} 매우나쁨`); }
-    else if (w.pm25 >= 36) { penalty += 25; reasons.push(`초미세먼지 ${w.pm25} 나쁨`); }
-    else if (w.pm25 >= 16) { penalty += 5; }
-  }
-
-  // ④ 강수확률
+  // ③ 강수확률
   if (w.popPercent >= 60) { penalty += 30; reasons.push(`강수확률 ${w.popPercent}%`); }
   else if (w.popPercent >= 30) { penalty += 10; }
 
-  // ⑤ 자외선
+  // ④ 자외선
   if (w.uvIndex != null && w.uvIndex >= 8) { penalty += 15; reasons.push(`자외선 ${w.uvIndex} 매우높음`); }
 
   const score = Math.max(0, Math.min(100, 100 - penalty));
@@ -121,8 +112,6 @@ export function calcWalkScore(w: WeatherInput): WalkScoreResult {
   if (surfaceRisk === "danger") gi = 0;              // 화상 위험 → 무조건 avoid
   else if (surfaceRisk === "warn") gi = Math.min(gi, 1);  // 지면 뜨거움 → caution 이하
   if (feelsLikeC >= 31 || feelsLikeC <= -5) gi = Math.min(gi, 1);
-  if (w.pm25 != null && w.pm25 >= 76) gi = 0;
-  else if (w.pm25 != null && w.pm25 >= 36) gi = Math.min(gi, 1);
   if (w.popPercent >= 60) gi = Math.min(gi, 1);
 
   const grade = GRADES[gi];
@@ -135,7 +124,6 @@ export function calcWalkScore(w: WeatherInput): WalkScoreResult {
   let advice = "";
   if (surfaceRisk === "danger") advice = "해가 진 뒤에 나가세요. 지금 아스팔트는 화상을 입힐 수 있습니다.";
   else if (surfaceRisk === "warn") advice = "그늘진 코스를 고르고 20분 이내로 다녀오세요.";
-  else if (w.pm25 != null && w.pm25 >= 76) advice = "초미세먼지가 매우 나쁩니다. 실내 활동을 권합니다.";
   else if (feelsLikeC <= -5) advice = "체감온도가 낮습니다. 옷을 입히고 15분 이내로 다녀오세요.";
   else if (feelsLikeC >= 31) advice = "더위에 약한 견종이라면 해가 진 뒤로 미루세요.";
   else if (w.popPercent >= 60) advice = "비 소식이 있어요. 우비를 챙기세요.";

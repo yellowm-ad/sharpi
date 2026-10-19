@@ -161,26 +161,6 @@ export const WALKS: DemoWalk[] = [
   },
 ];
 
-export type PostCategory = "자유" | "산책코스 추천" | "셰르피 사용팁" | "질문";
-
-export const POSTS: {
-  id: number; category: PostCategory; title: string; body: string;
-  author: string; likeCount: number; commentCount: number; ago: string; routeId?: number;
-}[] = [
-  { id: 1, category: "셰르피 사용팁", title: "티칭할 때 0.5m/s로 천천히 몰면 키프레임이 안정적이에요",
-    body: "빨리 몰면 매칭 신뢰도가 떨어져서 자동주행 때 F4가 자주 떴는데, 천천히 한 바퀴 돌리니까 확실히 좋아졌어요.",
-    author: "콩이맘", likeCount: 24, commentCount: 6, ago: "2시간 전" },
-  { id: 2, category: "산책코스 추천", title: "덕진공원 저녁 코스 공유합니다",
-    body: "해 지고 나서 가면 지면도 식고 사람도 적어요. 정자 옆 급수대 꼭 들르세요.",
-    author: "지훈", likeCount: 41, commentCount: 12, ago: "어제", routeId: 12 },
-  { id: 3, category: "질문", title: "장력 경고(L2)가 자주 뜨는데 정상인가요?",
-    body: "고양이만 보면 콩이가 확 당겨서 30N 넘게 찍혀요. 로봇이 감속은 잘 하는데 하네스를 바꿔야 할까요?",
-    author: "보리아빠", likeCount: 9, commentCount: 8, ago: "어제" },
-  { id: 4, category: "자유", title: "셰르피랑 첫 자동산책 성공했어요 🐾",
-    body: "옆에서 지켜보기만 했는데 1.8km 무사히 다녀왔습니다. 당김 횟수가 지난주보다 줄었네요.",
-    author: "두부네", likeCount: 57, commentCount: 15, ago: "3일 전" },
-];
-
 /** 마켓 (명목상, PRD F-8) — 시드 고정 */
 export const MARKET = [
   { id: 1, title: "Y자 하네스 S", price: 18000, condition: "새상품", emoji: "🦺" },

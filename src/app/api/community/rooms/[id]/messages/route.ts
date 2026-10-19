@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { and, eq, gte, sql } from "drizzle-orm";
 import { hasDb, noDb, db } from "@/db";
 import { messages } from "@/db/schema";
 import { getSessionUser } from "@/lib/auth";
@@ -43,6 +44,13 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   if (!content || content.length > CONTENT_MAX) {
     return NextResponse.json({ error: "메시지를 확인해 주세요 (최대 500자)" }, { status: 400 });
   }
+
+  // 도배 방지 — 10초에 5개까지
+  const [{ n }] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(messages)
+    .where(and(eq(messages.senderId, me.id), gte(messages.createdAt, new Date(Date.now() - 10_000))));
+  if (n >= 5) return NextResponse.json({ error: "메시지를 너무 빨리 보내고 있어요. 잠시 후 다시 보내 주세요" }, { status: 429 });
 
   const [m] = await db.insert(messages).values({ roomId, senderId: me.id, content }).returning();
   return NextResponse.json({

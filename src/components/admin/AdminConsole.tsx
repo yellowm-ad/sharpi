@@ -80,7 +80,7 @@ function Overview() {
   const checks: [string, boolean | undefined, string][] = [
     ["DB (Neon · sherpy 스키마)", status?.db as boolean, "커뮤니티·로그인·내 코스 저장"],
     ["카카오맵 JS 키", status?.kakaoKey as boolean, "지도"],
-    ["공공데이터 서비스키", status?.weatherKey as boolean, "기상청·에어코리아"],
+    ["공공데이터 서비스키", status?.weatherKey as boolean, "기상청 단기예보"],
     ["로봇 영상 주소", status?.streamBase as boolean, "WebRTC 카메라 — 카메라 모듈 확보 후"],
     ["세션 서명키", status?.sessionSecret as boolean, "로그인 쿠키"],
   ];
@@ -118,7 +118,7 @@ function Overview() {
         {!weather ? <p className="mt-2 text-xs text-muted">호출 중…</p> : weather.code === 200 ? (
           <ul className="mt-2 space-y-1 text-xs">
             {Object.entries(weather.status ?? {}).map(([k, v]) => (
-              <li key={k} className="flex justify-between"><span className="text-muted">{({ kmaNow: "기상청 초단기실황", kmaForecast: "기상청 단기예보", air: "에어코리아 PM2.5" } as Record<string, string>)[k] ?? k}</span>
+              <li key={k} className="flex justify-between"><span className="text-muted">{({ kmaNow: "기상청 초단기실황", kmaForecast: "기상청 단기예보" } as Record<string, string>)[k] ?? k}</span>
                 <span className={v === "ok" ? "font-semibold text-level-0" : "text-level-2"}>{v === "ok" ? "정상" : v}</span></li>
             ))}
           </ul>

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { hasDb, noDb } from "@/db";
+import { and, eq, isNull, sql } from "drizzle-orm";
+import { db, hasDb, noDb } from "@/db";
+import { routes } from "@/db/schema";
 import { getSessionUser } from "@/lib/auth";
 import { NewRouteSchema, createRoute, loadRoutes, visibleRoute } from "@/lib/routes-db";
 
@@ -14,6 +16,10 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "입력을 확인하세요" }, { status: 422 });
   }
+  const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(routes)
+    .where(and(eq(routes.userId, me.id), isNull(routes.deletedAt)));
+  if (n >= 100) return NextResponse.json({ error: "코스는 100개까지 저장할 수 있어요" }, { status: 409 });
+
   const id = await createRoute(me.id, parsed.data);
   const [route] = await loadRoutes(visibleRoute(id));
   return NextResponse.json({ route }, { status: 201 });

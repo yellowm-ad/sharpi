@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Thermometer, Flame, Wind, Umbrella, Lightbulb, TriangleAlert } from "lucide-react";
+import { Thermometer, Flame, Droplets, Umbrella, Lightbulb, TriangleAlert } from "lucide-react";
 import { calcWalkScore, type WalkScoreResult, type WeatherInput } from "@/lib/weather/walk-score";
 
 /** 시연 장소 — 덕진공원 (전북대 인근) */
@@ -17,7 +17,7 @@ const GRADE_COLOR: Record<WalkScoreResult["grade"], string> = {
 /** 기상청 키가 없을 때 쓰는 시연용 입력 — 10월 중순 전주 저녁 근사 */
 function demoInput(): WeatherInput {
   const hour = new Date(Date.now() + 9 * 3600 * 1000).getUTCHours();
-  return { tempC: 17, humidity: 58, windMs: 1.8, popPercent: 10, skyCode: 3, pm25: 19, uvIndex: 3, hour };
+  return { tempC: 17, humidity: 58, windMs: 1.8, popPercent: 10, skyCode: 3, uvIndex: 3, hour };
 }
 
 /** S06 홈 상단 — 오늘의 산책적합도 (PRD F-5) */
@@ -75,9 +75,9 @@ export default function WalkScoreCard() {
         </div>
 
         <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
-          <Item icon={<Thermometer size={15} />} text={`기온 ${raw.tempC}℃ (체감 ${w.feelsLikeC.toFixed(0)}℃)`} />
+          <Item icon={<Thermometer size={15} />} text={`기온 ${raw.tempC}℃${Math.abs(w.feelsLikeC - raw.tempC) >= 1 ? ` (체감 ${w.feelsLikeC.toFixed(0)}℃)` : ""}`} />
           <Item icon={<Flame size={15} />} text={`지면 추정 ${w.surfaceTempC.toFixed(0)}℃ ${w.surfaceRisk === "safe" ? "안전" : w.surfaceRisk === "warn" ? "주의" : "위험"}`} />
-          <Item icon={<Wind size={15} />} text={raw.pm25 != null ? `PM2.5 ${raw.pm25} ${raw.pm25 <= 15 ? "좋음" : raw.pm25 <= 35 ? "보통" : "나쁨"}` : "PM2.5 —"} />
+          <Item icon={<Droplets size={15} />} text={`습도 ${raw.humidity}% · 바람 ${raw.windMs}m/s`} />
           <Item icon={<Umbrella size={15} />} text={`강수확률 ${raw.popPercent}%`} />
         </div>
 

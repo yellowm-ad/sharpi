@@ -16,7 +16,10 @@ export async function POST(req: NextRequest) {
 
   const [u] = await db.select().from(users).where(eq(users.username, parsed.data.username.trim())).limit(1);
   const ok = u && !u.deletedAt && (await bcrypt.compare(parsed.data.password, u.passwordHash));
-  if (!ok) return NextResponse.json({ error: "아이디 또는 비밀번호가 맞지 않아요" }, { status: 401 });
+  if (!ok) {
+    await new Promise((r) => setTimeout(r, 500)); // 무차별 대입을 늦춘다
+    return NextResponse.json({ error: "아이디 또는 비밀번호가 맞지 않아요" }, { status: 401 });
+  }
 
   if (u.accountStatus !== "ACTIVE") {
     return NextResponse.json({ error: "이용이 정지된 계정이에요. 운영자에게 문의하세요" }, { status: 403 });

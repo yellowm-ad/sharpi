@@ -1,10 +1,18 @@
 import type { NextConfig } from "next";
 
+/** 기본 보안 헤더 — 지도(카카오)·폰트(jsDelivr)·위치·진동은 쓰므로 막지 않는다 */
+const securityHeaders = [
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "X-Frame-Options", value: "DENY" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(self)" },
+];
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  // 카카오맵 SDK는 외부 스크립트로 로드 → CSP 설정 시 허용 필요
-  images: {
-    remotePatterns: [{ protocol: "https", hostname: "**" }],
+  poweredByHeader: false,
+  async headers() {
+    return [{ source: "/:path*", headers: securityHeaders }];
   },
 };
 

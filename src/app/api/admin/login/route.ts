@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
   const t = issueToken();
   const res = NextResponse.json({ ok: true });
   res.cookies.set(ADMIN_COOKIE, t.value, {
-    httpOnly: true, sameSite: "strict", secure: process.env.NODE_ENV === "production", path: "/", maxAge: t.maxAge,
+    httpOnly: true, sameSite: "strict", secure: process.env.VERCEL === "1", path: "/", maxAge: t.maxAge,
   });
   return res;
 }
