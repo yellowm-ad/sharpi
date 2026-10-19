@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+/* ═══════════════════════════════════════════════
+   셰르피 디자인 토큰 — 푸른색 + 흰색
+   먹메이트(살구 오렌지)와 명확히 구분
+   ═══════════════════════════════════════════════ */
+@theme {
+  /* Primary — 신뢰 · 하늘 · 자유 */
+  --color-sherpy-50:  #EFF6FF;
+  --color-sherpy-100: #DBEAFE;
+  --color-sherpy-400: #60A5FA;
+  --color-sherpy-600: #2563EB;  /* 메인 */
+  --color-sherpy-700: #1D4ED8;
+  --color-sherpy-900: #172554;
+
+  /* Accent — 주행 중 / 활성 */
+  --color-accent: #06B6D4;
+
+  /* Surface */
+  --color-surface: #FFFFFF;
+  --color-bg:      #F8FAFC;
+  --color-line:    #E2E8F0;
+
+  /* Text */
+  --color-ink:     #0F172A;
+  --color-body:    #334155;
+  --color-muted:   #64748B;
+
+  /* 안전등급 L0~L3 — 로봇 대시보드 전용 */
+  --color-level-0: #16A34A;
+  --color-level-1: #CA8A04;
+  --color-level-2: #EA580C;
+  --color-level-3: #DC2626;
+
+  --font-sans: "Pretendard Variable", Pretendard, -apple-system, system-ui, sans-serif;
+}
+
+:root { color-scheme: light; }
+
+html, body {
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 모바일 전용 규칙 */
+body {
+  overflow-x: hidden;          /* 가로 스크롤 금지 */
+  overscroll-behavior-y: none; /* 당겨서 새로고침 방지 */
+}
+
+/* 수치 표시(장력·속도)는 반드시 고정폭 숫자 — 값이 바뀔 때 폭이 흔들리지 않게 */
+.tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* 하단 탭 세이프에어리어 보정 */
+.pb-safe { padding-bottom: calc(env(safe-area-inset-bottom) + 0.5rem); }
+
+/* 최소 터치 영역 44×44 */
+.touch { min-width: 44px; min-height: 44px; }

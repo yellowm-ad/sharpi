@@ -1,0 +1,29 @@
+# MediaMTX — 라즈베리파이 카메라를 WebRTC로 내보낸다
+# 공식 문서: https://mediamtx.org/docs/publish/raspberry-pi-cameras
+#
+# 영상은 Vercel을 거치지 않고 로봇 ↔ 브라우저 P2P로 흐른다.
+# 서버 대역폭 비용이 0이고 지연이 낮다.
+#
+# ⚠️ 전제: 라즈베리파이 카메라 모듈이 필요하다 (현재 BOM에 없음)
+
+logLevel: info
+
+# WebRTC (WHEP) — 브라우저가 여기에 붙는다
+webrtc: yes
+webrtcAddress: :8889
+webrtcAllowOrigin: '*'
+webrtcLocalUDPAddress: :8189
+
+rtsp: no
+rtmp: no
+hls: no
+
+paths:
+  cam:
+    source: rpiCamera
+    rpiCameraWidth: 640
+    rpiCameraHeight: 480
+    rpiCameraFPS: 15
+    rpiCameraBitrate: 1500000
+    # 와이파이 환경에서는 1280x720 @ 30fps 로 올려도 된다.
+    # 단, ORB 특징점 매칭과 CPU를 나눠 쓰므로 부하 테스트 후 결정할 것.

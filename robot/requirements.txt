@@ -1,0 +1,16 @@
+# 브리지
+requests>=2.32.0
+
+# PCA9685 (I2C PWM)
+adafruit-circuitpython-pca9685>=3.4.16
+adafruit-blinka>=8.50.0
+
+# 센서
+# HX711(로드셀 SBA-50L)은 GPIO 비트뱅잉 라이브러리 사용
+RPi.GPIO>=0.7.1
+# AS5600 (I2C 0x36)
+adafruit-circuitpython-busdevice>=5.2.9
+
+# 비전 (경로 기억 주행)
+opencv-python-headless>=4.10.0
+numpy>=1.26.0
