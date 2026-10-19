@@ -10,7 +10,8 @@ import EstopButton from "@/components/robot/EstopButton";
 import Sheet from "@/components/ui/Sheet";
 import { useRobotStream } from "@/hooks/useRobotStream";
 import { THRESHOLDS } from "@/lib/robot/types";
-import { routeById, distM, ROUTES } from "@/lib/demo/data";
+import { distM, ROUTES } from "@/lib/demo/data";
+import { findRoute } from "@/lib/my-routes";
 
 /** S12 산책 중 화면 — 텔레메트리로 거리·당김을 자동 집계 (PRD F-6) */
 export default function LiveWalk() {
@@ -42,7 +43,7 @@ export default function LiveWalk() {
     if (t < THRESHOLDS.F_HARD) a.pulling = false;
   }, [latest]);
 
-  const route = routeById(latest?.routeId ?? 12) ?? ROUTES[0];
+  const route = findRoute(latest?.routeId ?? 12) ?? ROUTES[0];
   const lines = useMemo(() => [
     { id: "plan", points: route.points, color: "#93C5FD", weight: 5, dashed: true },
     { id: "trail", points: trail, color: "#06B6D4", weight: 6 },

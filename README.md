@@ -32,9 +32,9 @@
 
 ```bash
 npm install
-cp .env.example .env.local     # 값을 채우세요
-npm run db:push                # Neon에 스키마 반영
-npm run seed                   # 개발 계정 + 로봇 1대 + 더미 데이터
+vercel link && vercel env pull .env.local   # 셰르피 전용 Neon(sherpy-db) 등 환경변수
+npm run db:push                # 스키마 반영 (sherpy 스키마만)
+node scripts/db-init.mjs       # 커뮤니티 방 시드 · 코스 id 1001부터
 npm run dev
 ```
 
@@ -46,7 +46,11 @@ npm run mock:robot
 
 → http://localhost:3000/robot
 
-로그인: `dev` / `dev1234`
+로그인은 선택입니다(게스트 우선). 어드민은 `/admin` — 비밀번호는 `.env.local` 의 `ADMIN_PASSWORD`.
+
+검증: `python scripts/qa_api.py` (API 통합 40항목) · 날씨 키 등록: `python scripts/set_weather_key.py`
+
+> 셰르피는 먹메이트와 **완전히 별개**입니다. 먹메이트에서는 구조·API 패턴만 참고하고 DB·계정 리소스는 공유하지 않습니다.
 
 > 자세한 설치는 [docs/SETUP.md](docs/SETUP.md) 참고. Windows 기준으로 적혀 있습니다.
 

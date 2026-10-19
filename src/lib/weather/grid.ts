@@ -61,3 +61,24 @@ export function getBaseDateTime(now = new Date()) {
 
   return { baseDate: `${y}${m}${d}`, baseTime: `${h}00` };
 }
+
+/**
+ * 단기예보(getVilageFcst) base_date / base_time 계산.
+ * 02·05·08·11·14·17·20·23시 발표, 각 발표 10분 뒤부터 조회 가능.
+ */
+export function getVillageBaseDateTime(now = new Date()) {
+  const kst = new Date(now.getTime() + 9 * 3600 * 1000 - 10 * 60 * 1000);
+  const slots = [2, 5, 8, 11, 14, 17, 20, 23];
+  const h = kst.getUTCHours();
+  const slot = [...slots].reverse().find((s) => s <= h);
+  if (slot === undefined) {
+    kst.setUTCDate(kst.getUTCDate() - 1); // 00~02시 → 전날 23시 발표
+    kst.setUTCHours(23);
+  } else {
+    kst.setUTCHours(slot);
+  }
+  const y = kst.getUTCFullYear();
+  const m = String(kst.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(kst.getUTCDate()).padStart(2, "0");
+  return { baseDate: `${y}${m}${d}`, baseTime: `${String(kst.getUTCHours()).padStart(2, "0")}00` };
+}
