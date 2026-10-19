@@ -25,6 +25,7 @@
   --color-ink:     #0F172A;
   --color-body:    #334155;
   --color-muted:   #64748B;
+  --color-overlay: rgb(15 23 42 / 0.5);
 
   /* 안전등급 L0~L3 — 로봇 대시보드 전용 */
   --color-level-0: #16A34A;
@@ -61,3 +62,22 @@ body {
 
 /* 최소 터치 영역 44×44 */
 .touch { min-width: 44px; min-height: 44px; }
+
+/* 카드 기본형 */
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: 1rem;
+}
+
+/* 바텀시트 / 배너 등장 */
+@keyframes sheet-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes fade-in  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes drop-in  { from { transform: translateY(-8px); opacity: 0; } to { transform: none; opacity: 1; } }
+.animate-sheet { animation: sheet-up .22s ease-out; }
+.animate-fade  { animation: fade-in .18s ease-out; }
+.animate-drop  { animation: drop-in .2s ease-out; }
+
+/* 스크롤바 숨김 — 가로 칩 목록 */
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }

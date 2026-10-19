@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/db";
+import { db, hasDb, noDb } from "@/db";
 import { robotTelemetry, robots } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { TelemetrySchema } from "@/lib/robot/types";
@@ -12,6 +12,7 @@ import { verifyRobotKey } from "@/lib/robot/auth";
  * 배열로 보내면 버퍼링된 묶음을 한 번에 받는다.
  */
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  if (!hasDb) return noDb();
   const { id } = await ctx.params;
   const robotId = Number(id);
   if (!Number.isInteger(robotId)) {

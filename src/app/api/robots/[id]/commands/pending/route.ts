@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/db";
+import { db, hasDb, noDb } from "@/db";
 import { robotCommands } from "@/db/schema";
 import { and, eq, asc, lt } from "drizzle-orm";
 import { verifyRobotKey } from "@/lib/robot/auth";
@@ -12,6 +12,7 @@ import { verifyRobotKey } from "@/lib/robot/auth";
  * ESTOP은 큐 순서를 무시하고 최우선 반환한다.
  */
 export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  if (!hasDb) return noDb();
   const { id } = await ctx.params;
   const robotId = Number(id);
 

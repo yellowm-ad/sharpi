@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { db } from "@/db";
+import { db, hasDb, noDb } from "@/db";
 import { robotTelemetry } from "@/db/schema";
 import { eq, gt, and, asc } from "drizzle-orm";
 
@@ -14,6 +14,7 @@ export const maxDuration = 300; // Hobby 플랜 상한. 끊기면 EventSource가
  * Last-Event-ID로 유실 구간을 이어받는다. (useRobotStream 훅 참고)
  */
 export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  if (!hasDb) return noDb();
   const { id } = await ctx.params;
   const robotId = Number(id);
 

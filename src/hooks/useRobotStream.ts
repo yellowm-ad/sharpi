@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { demoRobot, type CommandLog } from "@/lib/robot/demo-robot";
 
 export interface TelemetryRow {
   id: number;
@@ -26,6 +27,22 @@ export interface TelemetryRow {
 export type ConnState = "connecting" | "online" | "stale" | "offline";
 
 /**
+ * 실연동 / 시연 모드 판별.
+ * /api/health 가 db:false 면 브라우저 안의 가상 셰르피(demo-robot)를 쓴다.
+ * 한 번만 묻고 결과를 모듈에 보관한다.
+ */
+let demoFlag: Promise<boolean> | null = null;
+export function isDemoMode() {
+  if (!demoFlag) {
+    demoFlag = fetch("/api/health")
+      .then((r) => r.json())
+      .then((j) => !j.db)
+      .catch(() => true);
+  }
+  return demoFlag;
+}
+
+/**
  * 로봇 텔레메트리 SSE 구독.
  *
  * Vercel 함수 실행시간 제한(Hobby 300초) 때문에 스트림이 주기적으로 끊긴다.
@@ -35,46 +52,83 @@ export type ConnState = "connecting" | "online" | "stale" | "offline";
 export function useRobotStream(robotId: number | null) {
   const [latest, setLatest] = useState<TelemetryRow | null>(null);
   const [state, setState] = useState<ConnState>("connecting");
+  const [demo, setDemo] = useState(false);
+  const [commands, setCommands] = useState<CommandLog[]>([]);
   const lastRecvRef = useRef<number>(Date.now());
 
   useEffect(() => {
     if (robotId == null) return;
-
-    const es = new EventSource(`/api/robots/${robotId}/stream`);
-
-    es.addEventListener("telemetry", (e) => {
-      try {
-        const row = JSON.parse((e as MessageEvent).data) as TelemetryRow;
-        setLatest(row);
-        lastRecvRef.current = Date.now();
-        setState("online");
-      } catch {
-        /* 파싱 실패는 무시하고 다음 프레임을 기다린다 */
-      }
-    });
-
-    es.onerror = () => {
-      // EventSource는 스스로 재연결한다. 상태만 낮춰 표시.
-      setState((s) => (s === "online" ? "stale" : s));
-    };
+    let cleanup = () => {};
+    let alive = true;
 
     const watchdog = setInterval(() => {
       const gap = Date.now() - lastRecvRef.current;
       if (gap > 10_000) setState("offline");
-      else if (gap > 3_000) setState("stale");
+      else if (gap > 3_000) setState((s) => (s === "connecting" ? s : "stale"));
     }, 1000);
 
+    isDemoMode().then((isDemo) => {
+      if (!alive) return;
+      setDemo(isDemo);
+
+      if (isDemo) {
+        const bot = demoRobot();
+        cleanup = bot.subscribe(() => {
+          setLatest(bot.latest);
+          setCommands(bot.commands);
+          lastRecvRef.current = Date.now();
+          setState("online");
+        });
+        return;
+      }
+
+      const es = new EventSource(`/api/robots/${robotId}/stream`);
+      es.addEventListener("telemetry", (e) => {
+        try {
+          const row = JSON.parse((e as MessageEvent).data) as TelemetryRow;
+          setLatest(row);
+          lastRecvRef.current = Date.now();
+          setState("online");
+        } catch {
+          /* 파싱 실패는 무시하고 다음 프레임을 기다린다 */
+        }
+      });
+      es.onerror = () => {
+        // EventSource는 스스로 재연결한다. 상태만 낮춰 표시.
+        setState((s) => (s === "online" ? "stale" : s));
+      };
+
+      // 명령 상태(pending → sent → acked | expired) 표시용 폴링
+      const poll = setInterval(async () => {
+        try {
+          const r = await fetch(`/api/robots/${robotId}/commands`);
+          const j = await r.json();
+          setCommands(
+            (j.commands ?? []).map((c: { id: number; type: string; status: CommandLog["status"]; issuedAt: string; ackedAt?: string }) => ({
+              id: c.id, type: c.type, status: c.status,
+              issuedAt: Date.parse(c.issuedAt), ackedAt: c.ackedAt ? Date.parse(c.ackedAt) : undefined,
+            })),
+          );
+        } catch { /* 다음 주기에 다시 */ }
+      }, 2000);
+
+      cleanup = () => { es.close(); clearInterval(poll); };
+    });
+
     return () => {
+      alive = false;
       clearInterval(watchdog);
-      es.close();
+      cleanup();
     };
   }, [robotId]);
 
-  return { latest, state, lastSeenMsAgo: Date.now() - lastRecvRef.current };
+  return { latest, state, demo, commands, lastRecvAt: lastRecvRef.current };
 }
 
-/** 명령 발신 헬퍼 */
+/** 명령 발신 헬퍼 — 시연 모드면 가상 셰르피로 보낸다 */
 export async function sendCommand(robotId: number, type: string, payload: Record<string, unknown> = {}) {
+  if (await isDemoMode()) return { ok: true, command: demoRobot().command(type, payload) };
+
   const res = await fetch(`/api/robots/${robotId}/commands`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

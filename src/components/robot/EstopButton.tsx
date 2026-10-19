@@ -43,9 +43,9 @@ export default function EstopButton({ robotId, disabled }: { robotId: number; di
   };
 
   return (
-    <div className="fixed bottom-24 right-4 z-50 flex flex-col items-end gap-2">
+    <div className="pointer-events-none fixed inset-x-0 bottom-24 z-50 mx-auto flex max-w-[480px] flex-col items-end gap-2 px-4 [&>*]:pointer-events-auto">
       {status === "fail" && (
-        <p className="max-w-[200px] rounded-lg bg-[var(--color-level-3)] px-3 py-2 text-xs text-white">
+        <p className="max-w-[200px] rounded-lg bg-level-3 px-3 py-2 text-xs text-white">
           전송 실패 — 로봇의 물리 정지 버튼을 사용하세요
         </p>
       )}
@@ -58,20 +58,21 @@ export default function EstopButton({ robotId, disabled }: { robotId: number; di
         onPointerDown={start}
         onPointerUp={cancel}
         onPointerLeave={cancel}
+        onContextMenu={(e) => e.preventDefault()}
         disabled={disabled || status === "sending"}
         aria-label="비상 정지 (1초간 길게 누르기)"
         className={[
-          "touch relative h-20 w-20 rounded-full text-sm font-bold text-white shadow-lg transition",
+          "touch relative h-20 w-20 select-none whitespace-pre-line rounded-full text-sm font-bold leading-tight text-white shadow-lg shadow-level-3/40 ring-4 ring-white transition",
           "disabled:opacity-40",
-          holding ? "scale-95 bg-[var(--color-level-3)]" : "bg-[var(--color-level-3)]",
+          holding ? "scale-95 bg-level-3" : "bg-level-3",
         ].join(" ")}
       >
         {holding ? "누르는 중…" : "긴급\n정지"}
         {holding && (
-          <span className="absolute inset-0 animate-ping rounded-full bg-[var(--color-level-3)] opacity-60" />
+          <span className="absolute inset-0 animate-ping rounded-full bg-level-3 opacity-60" />
         )}
       </button>
-      <p className="max-w-[120px] text-right text-[10px] leading-tight text-muted">
+      <p className="max-w-[120px] rounded bg-surface/80 px-1 text-right text-[10px] leading-tight text-muted">
         1초 길게 누르기<br />보조 수단입니다
       </p>
     </div>

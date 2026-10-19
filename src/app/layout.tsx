@@ -4,7 +4,6 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "셰르피 — 강아지를 자유롭게",
   description: "반려견 산책 보조 로봇 셰르피와 연동되는 산책지원 플랫폼",
-  manifest: "/manifest.json",
 };
 
 export const viewport: Viewport = {
@@ -18,7 +17,17 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ko">
-      <body className="mx-auto min-h-dvh max-w-[480px] bg-surface">{children}</body>
+      <head>
+        {/* Pretendard — 한글 서브셋 포함 동적 로딩 (PRD §12 한글 깨짐 대응) */}
+        <link
+          rel="stylesheet"
+          crossOrigin="anonymous"
+          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
+        />
+      </head>
+      <body className="mx-auto min-h-dvh max-w-[480px] bg-bg shadow-[0_0_0_1px_var(--color-line)]">
+        {children}
+      </body>
     </html>
   );
 }

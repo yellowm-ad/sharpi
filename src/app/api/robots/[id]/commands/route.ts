@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/db";
+import { db, hasDb, noDb } from "@/db";
 import { robotCommands } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { CommandSchema } from "@/lib/robot/types";
 
 /** POST /api/robots/:id/commands — 앱이 명령을 큐에 넣는다 */
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  if (!hasDb) return noDb();
   const { id } = await ctx.params;
   const robotId = Number(id);
 
@@ -25,6 +26,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
 /** GET /api/robots/:id/commands — 최근 명령 이력 (앱 표시용) */
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  if (!hasDb) return noDb();
   const { id } = await ctx.params;
   const rows = await db
     .select()

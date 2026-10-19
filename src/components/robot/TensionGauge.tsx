@@ -22,9 +22,11 @@ export default function TensionGauge({ value }: { value: number | null }) {
   const tickAngle = (n: number) => Math.PI * (1 - n / MAX);
   const tick = (n: number) => {
     const a = tickAngle(n);
+    // 서버/브라우저 부동소수 끝자리 차이로 하이드레이션이 어긋나지 않게 반올림
+    const r2 = (x: number) => Math.round(x * 100) / 100;
     return {
-      x1: 100 + (R - 10) * Math.cos(a), y1: 100 - (R - 10) * Math.sin(a),
-      x2: 100 + (R + 8) * Math.cos(a),  y2: 100 - (R + 8) * Math.sin(a),
+      x1: r2(100 + (R - 10) * Math.cos(a)), y1: r2(100 - (R - 10) * Math.sin(a)),
+      x2: r2(100 + (R + 8) * Math.cos(a)),  y2: r2(100 - (R + 8) * Math.sin(a)),
     };
   };
 

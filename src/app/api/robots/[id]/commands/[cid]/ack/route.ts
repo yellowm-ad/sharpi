@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/db";
+import { db, hasDb, noDb } from "@/db";
 import { robotCommands } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import { verifyRobotKey } from "@/lib/robot/auth";
 
 /** POST /api/robots/:id/commands/:cid/ack — 로봇이 명령 수행을 확인 */
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string; cid: string }> }) {
+  if (!hasDb) return noDb();
   const { id, cid } = await ctx.params;
   const robotId = Number(id);
 
