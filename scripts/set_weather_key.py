@@ -35,10 +35,11 @@ def push_vercel(value: str) -> bool:
         return False
     ok = True
     for env in ("production", "preview", "development"):
+        # Windows 기본 코드페이지(cp949)로 vercel 출력을 읽다 깨지지 않게 utf-8 로 받는다
         subprocess.run([vercel, "env", "rm", NAME, env, "--yes"], cwd=ROOT,
-                       capture_output=True, text=True)
+                       capture_output=True, text=True, encoding="utf-8", errors="replace")
         r = subprocess.run([vercel, "env", "add", NAME, env], cwd=ROOT, input=value,
-                           capture_output=True, text=True)
+                           capture_output=True, text=True, encoding="utf-8", errors="replace")
         print(f"  - Vercel {env}: {'완료' if r.returncode == 0 else '실패'}")
         ok &= r.returncode == 0
     return ok
@@ -47,6 +48,11 @@ def push_vercel(value: str) -> bool:
 def main() -> int:
     print("공공데이터포털 '일반 인증키(Decoding)'를 붙여넣고 Enter (입력해도 화면에 안 보입니다)")
     value = getpass.getpass("> ").strip().strip('"').strip("'")
+    # 오른쪽 클릭과 Ctrl+V 를 둘 다 해서 같은 키가 두 번 붙는 경우
+    half = len(value) // 2
+    if len(value) % 2 == 0 and value[:half] == value[half:]:
+        value = value[:half]
+        print("  - 같은 키가 두 번 붙여넣어져서 하나만 남겼습니다.")
     if len(value) < 20:
         print("키가 너무 짧습니다. Decoding 키 전체를 복사했는지 확인하세요.")
         return 1

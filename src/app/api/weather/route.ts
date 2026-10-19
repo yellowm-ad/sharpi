@@ -20,6 +20,10 @@ async function getJson(url: string) {
   const text = await res.text();
   try {
     const j = JSON.parse(text);
+    // 키 미등록 등은 HTTP 403 + {"OpenAPI_ServiceResponse":{"cmmMsgHeader":{"errMsg":...}}} 로 온다
+    const gw = j?.OpenAPI_ServiceResponse?.cmmMsgHeader;
+    if (gw?.errMsg) throw new Error(gw.errMsg);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const code = j?.response?.header?.resultCode;
     if (code && code !== "00") throw new Error(`${code} ${j.response.header.resultMsg}`);
     return j;
