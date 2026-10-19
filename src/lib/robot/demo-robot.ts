@@ -1,7 +1,8 @@
 "use client";
 
 import { THRESHOLDS } from "@/lib/robot/types";
-import { ROUTES, routeById } from "@/lib/demo/data";
+import { ROUTES } from "@/lib/demo/data";
+import { findRoute } from "@/lib/my-routes";
 import type { TelemetryRow } from "@/hooks/useRobotStream";
 
 /**
@@ -39,6 +40,7 @@ class DemoRobot {
   private seq = 0;
   private cmdSeq = 0;
   private tension = 1;
+  private silentUntil = 0; // 연결 끊김 시뮬레이션 — 이 시각까지 텔레메트리를 보내지 않는다
   private timer: ReturnType<typeof setInterval> | null = null;
   private listeners = new Set<Listener>();
 
@@ -75,6 +77,20 @@ class DemoRobot {
     return log;
   }
 
+  /**
+   * 시연 리허설용 이벤트 주입 (어드민)
+   *  pull       강아지가 확 당김 → L2 경고, 자동 감속
+   *  overload   견인 한계(40N) 초과 → L3
+   *  dip        경로 매칭 신뢰도 저하 → F4
+   *  disconnect 10초간 텔레메트리 중단 → 앱이 지연/연결 끊김으로 전환
+   */
+  inject(kind: "pull" | "overload" | "dip" | "disconnect") {
+    if (kind === "pull") { this.pullLeft = 7; this.pullPeak = 34; } // 리허설용은 눈에 띄게 길게
+    if (kind === "overload") { this.pullLeft = 6; this.pullPeak = 44; }
+    if (kind === "dip") this.dipLeft = 6;
+    if (kind === "disconnect") this.silentUntil = Date.now() + 10_000;
+  }
+
   private patch(id: number, p: Partial<CommandLog>) {
     this.commands = this.commands.map((c) => (c.id === id ? { ...c, ...p } : c));
     this.emit();
@@ -95,7 +111,7 @@ class DemoRobot {
         this.mode = "idle";
         break;
       case "START_FOLLOW": {
-        const r = routeById(this.routeId ?? 12) ?? ROUTES[0];
+        const r = findRoute(this.routeId) ?? ROUTES[0];
         this.mode = "follow";
         this.paused = false;
         this.kfIndex = 0;
@@ -120,6 +136,7 @@ class DemoRobot {
   }
 
   private tick() {
+    if (Date.now() < this.silentUntil) return;
     const moving = (this.mode === "follow" || this.mode === "teach") && !this.paused;
     const noise = (s: number) => (Math.random() - 0.5) * 2 * s;
 
@@ -168,7 +185,7 @@ class DemoRobot {
     }
 
     // 위치 — 보호자 폰 GPS를 대신해 코스 위를 따라 움직인다 (PRD §7-5)
-    const r = routeById(this.routeId ?? 12) ?? ROUTES[0];
+    const r = findRoute(this.routeId) ?? ROUTES[0];
     const prog = this.kfTotal ? this.kfIndex / this.kfTotal : 0;
     const segF = prog * (r.points.length - 1);
     const i = Math.min(r.points.length - 2, Math.floor(segF));
@@ -199,8 +216,25 @@ class DemoRobot {
   }
 }
 
+type InjectKind = Parameters<DemoRobot["inject"]>[0];
+
 let instance: DemoRobot | null = null;
+let channel: BroadcastChannel | null = null;
+
 export function demoRobot() {
-  if (!instance) instance = new DemoRobot();
+  if (!instance) {
+    instance = new DemoRobot();
+    // 같은 브라우저의 다른 탭(어드민 ↔ 앱)에서 보낸 리허설 이벤트를 받는다
+    try {
+      channel = new BroadcastChannel("sherpy-demo");
+      channel.onmessage = (e) => instance?.inject(e.data as InjectKind);
+    } catch { /* 지원 안 하는 브라우저 — 이 탭에만 적용 */ }
+  }
   return instance;
+}
+
+/** 리허설 이벤트 주입 — 이 탭과 같은 브라우저의 다른 탭에 열린 앱 모두에 적용 */
+export function broadcastInject(kind: InjectKind) {
+  demoRobot().inject(kind);
+  channel?.postMessage(kind);
 }

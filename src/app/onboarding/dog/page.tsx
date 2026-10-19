@@ -24,7 +24,7 @@ export default function DogOnboarding() {
           <In label="몸무게 (kg)" value={weight} onChange={setWeight} ph="4.1" type="number" />
         </div>
         <p className="mt-3 text-xs text-muted">몸무게는 장력 임계값 안내에 참고합니다.</p>
-        <button disabled={!name} onClick={() => router.push("/onboarding/robot")}
+        <button disabled={!name} onClick={() => router.push(`/onboarding/robot${location.search}`)}
                 className="touch mt-8 w-full rounded-2xl bg-sherpy-600 py-3.5 font-semibold text-white disabled:opacity-40">
           다음
         </button>

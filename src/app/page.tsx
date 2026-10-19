@@ -20,15 +20,13 @@ export default function SplashPage() {
       </div>
 
       <div className="relative mb-8 flex w-full max-w-xs flex-col gap-3">
-        <Link href="/login" className="touch flex items-center justify-center rounded-2xl bg-white py-3.5 font-semibold text-sherpy-700">
-          로그인
+        <Link href="/home" className="touch flex items-center justify-center rounded-2xl bg-white py-3.5 font-semibold text-sherpy-700">
+          바로 시작하기
         </Link>
-        <Link href="/signup" className="touch flex items-center justify-center rounded-2xl border border-white/40 py-3.5 font-semibold text-white">
-          회원가입
-        </Link>
-        <Link href="/home" className="mt-1 text-center text-xs text-sherpy-100/80 underline underline-offset-4">
-          둘러보기 (시연용 계정)
-        </Link>
+        <p className="mt-1 text-center text-xs text-sherpy-100/80">
+          로그인 없이 둘러볼 수 있어요 ·{" "}
+          <Link href="/login?next=/home" className="font-semibold text-white underline underline-offset-4">로그인</Link>
+        </p>
       </div>
     </main>
   );

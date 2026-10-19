@@ -5,13 +5,17 @@ import { Bot, ChevronRight, Route, Footprints, Store, Users } from "lucide-react
 import WalkScoreCard from "@/components/weather/WalkScoreCard";
 import SafetyBadge from "@/components/robot/SafetyBadge";
 import { useRobotStream } from "@/hooks/useRobotStream";
-import { DOG, USER, ROUTES, WALKS, routeLength, routeDurationMin } from "@/lib/demo/data";
+import { useUser } from "@/lib/session";
+import { useMyRoutes } from "@/lib/my-routes";
+import { DOG, ROUTES, WALKS, routeLength, routeDurationMin } from "@/lib/demo/data";
 
 const MODE_LABEL = { idle: "대기 중", teach: "티칭 중", follow: "자동주행 중", estop: "정지됨" } as const;
 
 /** S06 홈 — Walk Score 카드 + 로봇 상태 요약 (PRD F-5) */
 export default function HomePage() {
   const { latest, state } = useRobotStream(1);
+  const user = useUser();
+  const mine = useMyRoutes();
   const week = WALKS.slice(0, 3);
   const pullsThis = week.reduce((s, w) => s + w.pullCount, 0);
 
@@ -19,10 +23,14 @@ export default function HomePage() {
     <div className="px-4 pt-5">
       <header className="mb-4 flex items-center justify-between">
         <div>
-          <p className="text-sm text-muted">{USER.nickname}님, {DOG.name}와(과) 함께</p>
+          <p className="text-sm text-muted">{user ? `${user.nickname}님, ${DOG.name}와(과) 함께` : "반가워요, 둘러보세요"}</p>
           <h1 className="text-xl font-bold">오늘도 강아지를 자유롭게</h1>
         </div>
-        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-sherpy-100 text-2xl">🐶</div>
+        {user ? (
+          <Link href="/my" className="flex h-11 w-11 items-center justify-center rounded-full bg-sherpy-100 text-2xl">🐶</Link>
+        ) : (
+          <Link href="/login?next=/home" className="touch flex items-center rounded-full border border-sherpy-400 px-4 text-sm font-semibold text-sherpy-600">로그인</Link>
+        )}
       </header>
 
       <WalkScoreCard />
@@ -71,13 +79,14 @@ export default function HomePage() {
       {/* 추천 코스 */}
       <section className="mt-5">
         <div className="mb-2 flex items-center justify-between">
-          <h2 className="font-bold">덕진공원 근처 추천 코스</h2>
+          <h2 className="font-bold">{mine.length ? "내 코스 · 추천 코스" : "덕진공원 근처 추천 코스"}</h2>
           <Link href="/map" className="text-xs text-sherpy-600">지도에서 보기</Link>
         </div>
         <div className="no-scrollbar -mx-4 flex gap-3 overflow-x-auto px-4 pb-1">
-          {ROUTES.map((r) => (
+          {[...mine, ...ROUTES].map((r) => (
             <Link key={r.id} href={`/routes/${r.id}`} className="card w-56 shrink-0 p-4">
               <div className="flex items-center gap-1.5">
+                {r.id > 1000 && <span className="rounded-full bg-sherpy-600 px-2 py-0.5 text-[11px] font-semibold text-white">내 코스</span>}
                 <span className="rounded-full bg-sherpy-50 px-2 py-0.5 text-[11px] font-semibold text-sherpy-700">{r.difficulty}</span>
                 {r.taught && <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[11px] font-semibold text-accent">자동주행 가능</span>}
               </div>

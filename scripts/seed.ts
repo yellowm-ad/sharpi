@@ -2,7 +2,8 @@
  * 시드 데이터 — 명목상 기능(마켓·혼잡도)과 개발용 계정/로봇을 넣는다.
  * 실행: npm run seed
  */
-import "dotenv/config";
+import { config } from "dotenv";
+config({ path: ".env.local" });
 import bcrypt from "bcryptjs";
 import { db } from "../src/db";
 import { users, robots, marketItems, crowdMock } from "../src/db/schema";

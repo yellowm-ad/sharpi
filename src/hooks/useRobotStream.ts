@@ -28,7 +28,7 @@ export type ConnState = "connecting" | "online" | "stale" | "offline";
 
 /**
  * 실연동 / 시연 모드 판별.
- * /api/health 가 db:false 면 브라우저 안의 가상 셰르피(demo-robot)를 쓴다.
+ * /api/health 의 robotLive 가 false 면(실로봇 미연결) 브라우저 안의 가상 셰르피(demo-robot)를 쓴다.
  * 한 번만 묻고 결과를 모듈에 보관한다.
  */
 let demoFlag: Promise<boolean> | null = null;
@@ -36,7 +36,7 @@ export function isDemoMode() {
   if (!demoFlag) {
     demoFlag = fetch("/api/health")
       .then((r) => r.json())
-      .then((j) => !j.db)
+      .then((j) => !j.robotLive)
       .catch(() => true);
   }
   return demoFlag;

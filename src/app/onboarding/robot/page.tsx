@@ -6,6 +6,11 @@ import Link from "next/link";
 import { Bot, Check } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 
+function nextPath() {
+  const n = new URLSearchParams(location.search).get("next");
+  return n && n.startsWith("/") && !n.startsWith("//") ? n : "/home";
+}
+
 /** S05 로봇 페어링 — 로봇 화면/라벨의 6자리 코드 입력. 건너뛰기 가능. TODO(M1): POST /api/robots/pair */
 export default function RobotPairing() {
   const router = useRouter();
@@ -15,7 +20,7 @@ export default function RobotPairing() {
 
   const pair = () => {
     setDone(true);
-    setTimeout(() => router.push("/home"), 900);
+    setTimeout(() => router.push(nextPath()), 900);
   };
 
   return (
@@ -44,7 +49,7 @@ export default function RobotPairing() {
                 className="touch mt-8 w-full rounded-2xl bg-sherpy-600 py-3.5 font-semibold text-white disabled:opacity-40">
           {done ? "연결됐어요" : "연결하기"}
         </button>
-        <Link href="/home" className="mt-4 block text-center text-sm text-muted">
+        <Link href="/home" onClick={(e) => { e.preventDefault(); router.push(nextPath()); }} className="mt-4 block text-center text-sm text-muted">
           나중에 할게요 <span className="text-xs">(로봇 기능은 잠금 표시)</span>
         </Link>
       </div>

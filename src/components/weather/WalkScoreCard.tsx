@@ -5,7 +5,7 @@ import { Thermometer, Flame, Wind, Umbrella, Lightbulb, TriangleAlert } from "lu
 import { calcWalkScore, type WalkScoreResult, type WeatherInput } from "@/lib/weather/walk-score";
 
 /** 시연 장소 — 덕진공원 (전북대 인근) */
-export const DEOKJIN = { lat: 35.8476, lng: 127.1231 };
+export const DEOKJIN = { lat: 35.8486, lng: 127.1229 };
 
 const GRADE_COLOR: Record<WalkScoreResult["grade"], string> = {
   best: "var(--color-level-0)",

@@ -10,7 +10,9 @@ import SafetyBadge from "@/components/robot/SafetyBadge";
 import EstopButton from "@/components/robot/EstopButton";
 import Sheet from "@/components/ui/Sheet";
 import { THRESHOLDS, FAULT_LABEL } from "@/lib/robot/types";
-import { routeById } from "@/lib/demo/data";
+import { findRoute, useMyRoutes, markTaught } from "@/lib/my-routes";
+import { useUser } from "@/lib/session";
+import { ROUTES } from "@/lib/demo/data";
 import type { CommandLog } from "@/lib/robot/demo-robot";
 
 const MODE = {
@@ -33,18 +35,32 @@ export default function RobotDashboard() {
   const [busy, setBusy] = useState(false);
   const [confirmFollow, setConfirmFollow] = useState(false);
   const [limit, setLimit] = useState(1.2);
+  const [pickOpen, setPickOpen] = useState(false);
+  const mine = useMyRoutes();
   const prevLevel = useRef(0);
+  const prevMode = useRef<string>("idle");
+  const user = useUser();
 
   const offline = state !== "online" && state !== "stale";
   const level = latest?.safetyLevel ?? 0;
   const mode = latest?.mode ?? "idle";
-  const route = latest?.routeId ? routeById(latest.routeId) : null;
+  const route = findRoute(latest?.routeId);
 
   // L2 이상으로 올라가면 진동 (PRD F-1 수용기준)
   useEffect(() => {
     if (level >= 2 && prevLevel.current < 2) navigator.vibrate?.([200, 100, 200]);
     prevLevel.current = level;
   }, [level]);
+
+  // 티칭 종료(teach → idle) 시 내 코스에 키프레임 수를 기록
+  useEffect(() => {
+    if (prevMode.current === "teach" && mode === "idle" && user && route && route.id > 1000 && latest?.kfIndex) {
+      markTaught(route.id, latest.kfIndex);
+    }
+    prevMode.current = mode;
+  }, [mode, user, route, latest?.kfIndex]);
+
+  const needsTeach = !!route && !route.taught;
 
   const cmd = async (type: string, payload: Record<string, unknown> = {}) => {
     setBusy(true);
@@ -125,7 +141,7 @@ export default function RobotDashboard() {
       <section className="card mt-3 p-4">
         <div className="flex items-center justify-between text-sm">
           <span className="flex items-center gap-1.5 font-semibold"><RouteIcon size={16} className="text-sherpy-600" />{route?.name ?? "코스 미지정"}</span>
-          <Link href="/map" className="text-xs text-sherpy-600">변경</Link>
+          <button onClick={() => setPickOpen(true)} disabled={offline || mode === "follow" || mode === "teach"} className="text-xs font-semibold text-sherpy-600 disabled:opacity-40">코스 변경</button>
         </div>
         <div className="mt-3 flex justify-between text-xs text-muted">
           <span>{mode === "teach" ? "키프레임 기록 중" : "경로 진행"}</span>
@@ -149,12 +165,18 @@ export default function RobotDashboard() {
           ) : (
             <Btn onClick={() => cmd("START_TEACH")} disabled={offline || busy || mode === "follow"} icon={<CircleDot size={16} />}>티칭 시작</Btn>
           )}
-          <Btn onClick={() => setConfirmFollow(true)} disabled={offline || busy || mode === "follow" || mode === "teach"} primary icon={<Play size={16} />}>
+          <Btn onClick={() => setConfirmFollow(true)} disabled={offline || busy || mode === "follow" || mode === "teach" || needsTeach} primary icon={<Play size={16} />}>
             자동주행 시작
           </Btn>
           <Btn onClick={() => cmd("PAUSE")} disabled={offline || busy || mode !== "follow"} icon={<Pause size={16} />}>일시정지</Btn>
           <Btn onClick={() => cmd("RESUME")} disabled={offline || busy} icon={<Play size={16} />}>{mode === "estop" ? "정지 해제" : "재개"}</Btn>
         </div>
+
+        {needsTeach && mode !== "teach" && (
+          <p className="mt-2 rounded-xl bg-sherpy-50 px-3 py-2 text-xs text-sherpy-700">
+            아직 티칭하지 않은 코스예요. [티칭 시작] 후 송신기로 한 번 몰고 [티칭 종료·저장]하면 자동주행할 수 있어요.
+          </p>
+        )}
 
         <div className="card mt-2 p-4">
           <div className="flex items-center justify-between text-sm">
@@ -194,6 +216,22 @@ export default function RobotDashboard() {
       </p>
 
       <EstopButton robotId={robotId} disabled={offline} />
+
+      <Sheet open={pickOpen} title="주행할 코스 선택" cancelLabel="닫기" onClose={() => setPickOpen(false)}>
+        <ul className="-mx-1 max-h-[45dvh] space-y-1.5 overflow-y-auto px-1">
+          {[...mine, ...ROUTES].map((r) => (
+            <li key={r.id}>
+              <button onClick={() => { cmd("SET_ROUTE", { route_id: r.id }); setPickOpen(false); }}
+                      className={`touch flex w-full items-center gap-2 rounded-xl border px-3 py-2.5 text-left ${r.id === latest?.routeId ? "border-sherpy-600 bg-sherpy-50" : "border-line"}`}>
+                {r.id > 1000 && <span className="rounded-full bg-sherpy-600 px-2 py-0.5 text-[10px] font-semibold text-white">내 코스</span>}
+                <span className="flex-1 truncate font-semibold text-ink">{r.name}</span>
+                <span className="text-[11px] text-muted">{r.taught ? "자동주행 가능" : "티칭 필요"}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+        {mine.length === 0 && <p className="mt-2 text-xs text-muted">지도에서 코스를 그려 저장하면 여기서 바로 불러올 수 있어요.</p>}
+      </Sheet>
 
       <Sheet
         open={confirmFollow}

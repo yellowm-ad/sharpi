@@ -1,22 +1,31 @@
 import {
-  pgTable, serial, integer, text, varchar, timestamp,
-  doublePrecision, boolean, jsonb, index, primaryKey,
+  pgSchema, serial, bigserial, integer, text, varchar, timestamp,
+  doublePrecision, boolean, jsonb, index, uniqueIndex, primaryKey,
 } from "drizzle-orm/pg-core";
+
+/**
+ * 모든 테이블은 Postgres 스키마 "sherpy" 안에 만든다.
+ * 같은 Neon DB를 먹메이트(public 스키마)와 같이 써도 테이블 이름이 겹치지 않는다.
+ * drizzle.config.ts 의 schemaFilter 로 public 은 절대 건드리지 않는다.
+ */
+export const sherpy = pgSchema("sherpy");
 
 /* ── 계정 ─────────────────────────────────────
    먹메이트와 동일 정책: 아이디 10자 / 비밀번호 16자, 외부 본인인증 없음 */
-export const users = pgTable("users", {
+export const users = sherpy.table("users", {
   id: serial("id").primaryKey(),
   username: varchar("username", { length: 10 }).notNull().unique(),
   passwordHash: text("password_hash").notNull(),
   nickname: varchar("nickname", { length: 20 }).notNull(),
   avatarUrl: text("avatar_url"),
+  role: varchar("role", { length: 10 }).notNull().default("USER"),                 // USER | ADMIN
+  accountStatus: varchar("account_status", { length: 10 }).notNull().default("ACTIVE"), // ACTIVE | SUSPENDED
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
 });
 
 /* ── 반려견 ──────────────────────────────────── */
-export const dogs = pgTable("dogs", {
+export const dogs = sherpy.table("dogs", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id),
   name: varchar("name", { length: 20 }).notNull(),
@@ -28,7 +37,7 @@ export const dogs = pgTable("dogs", {
 });
 
 /* ── 로봇 ────────────────────────────────────── */
-export const robots = pgTable("robots", {
+export const robots = sherpy.table("robots", {
   id: serial("id").primaryKey(),
   ownerId: integer("owner_id").notNull().references(() => users.id),
   serial: varchar("serial", { length: 40 }).notNull().unique(),
@@ -42,7 +51,7 @@ export const robots = pgTable("robots", {
 
 /* ── 텔레메트리 (시계열, 1Hz) ───────────────────
    7일 경과분은 주기 삭제 — Neon 용량 관리 */
-export const robotTelemetry = pgTable("robot_telemetry", {
+export const robotTelemetry = sherpy.table("robot_telemetry", {
   id: serial("id").primaryKey(),
   robotId: integer("robot_id").notNull().references(() => robots.id),
   ts: timestamp("ts", { withTimezone: true }).notNull(),
@@ -70,7 +79,7 @@ export const robotTelemetry = pgTable("robot_telemetry", {
 
 /* ── 명령 큐 ──────────────────────────────────
    pending → sent → acked | expired(10초 무응답) */
-export const robotCommands = pgTable("robot_commands", {
+export const robotCommands = sherpy.table("robot_commands", {
   id: serial("id").primaryKey(),
   robotId: integer("robot_id").notNull().references(() => robots.id),
   issuedBy: integer("issued_by").references(() => users.id),
@@ -83,7 +92,7 @@ export const robotCommands = pgTable("robot_commands", {
 }, (t) => [index("idx_cmd_robot_status").on(t.robotId, t.status, t.issuedAt)]);
 
 /* ── 코스 ────────────────────────────────────── */
-export const routes = pgTable("routes", {
+export const routes = sherpy.table("routes", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id),
   name: varchar("name", { length: 40 }).notNull(),
@@ -92,12 +101,14 @@ export const routes = pgTable("routes", {
   estDurationS: integer("est_duration_s"),
   difficulty: varchar("difficulty", { length: 10 }),  // easy|normal|hard
   isPublic: boolean("is_public").notNull().default(false),
+  taught: boolean("taught").notNull().default(false),     // 셰르피 티칭 완료 여부
+  keyframes: integer("keyframes").notNull().default(0),
   likeCount: integer("like_count").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
 });
 
-export const routePoints = pgTable("route_points", {
+export const routePoints = sherpy.table("route_points", {
   id: serial("id").primaryKey(),
   routeId: integer("route_id").notNull().references(() => routes.id),
   seq: integer("seq").notNull(),
@@ -105,7 +116,7 @@ export const routePoints = pgTable("route_points", {
   lng: doublePrecision("lng").notNull(),
 });
 
-export const routePois = pgTable("route_pois", {
+export const routePois = sherpy.table("route_pois", {
   id: serial("id").primaryKey(),
   routeId: integer("route_id").notNull().references(() => routes.id),
   type: varchar("type", { length: 20 }).notNull(), // water|poopbag|shade|caution|petfriendly
@@ -114,14 +125,14 @@ export const routePois = pgTable("route_pois", {
   label: varchar("label", { length: 30 }),
 });
 
-export const routeLikes = pgTable("route_likes", {
+export const routeLikes = sherpy.table("route_likes", {
   routeId: integer("route_id").notNull().references(() => routes.id),
   userId: integer("user_id").notNull().references(() => users.id),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [primaryKey({ columns: [t.routeId, t.userId] })]);
 
 /* ── 산책 기록 ───────────────────────────────── */
-export const walks = pgTable("walks", {
+export const walks = sherpy.table("walks", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id),
   dogId: integer("dog_id").references(() => dogs.id),
@@ -144,31 +155,44 @@ export const walks = pgTable("walks", {
   weatherSnapshot: jsonb("weather_snapshot").$type<Record<string, unknown>>(),
 });
 
-/* ── 커뮤니티 ───────────────────────────────── */
-export const posts = pgTable("posts", {
+/* ── 커뮤니티 — 먹메이트 "음식 커뮤니티"와 같은 고정 오픈채팅방 방식 ──
+   폴링 2.5초 + messages.id 커서 증분 조회. 삭제는 소프트(deleted_at)로
+   "삭제된 메시지예요" 처리, 신고 시 메시지 스냅샷을 남긴다. */
+export const chatRooms = sherpy.table("chat_rooms", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
-  category: varchar("category", { length: 20 }).notNull(),
-  title: varchar("title", { length: 60 }).notNull(),
-  body: text("body").notNull(),
-  images: jsonb("images").$type<string[]>().default([]),
-  likeCount: integer("like_count").notNull().default(0),
-  commentCount: integer("comment_count").notNull().default(0),
+  title: varchar("title", { length: 40 }).notNull().unique(),
+  description: varchar("description", { length: 80 }),
+  emoji: varchar("emoji", { length: 8 }),
+  sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  deletedAt: timestamp("deleted_at", { withTimezone: true }),
 });
 
-export const comments = pgTable("comments", {
-  id: serial("id").primaryKey(),
-  postId: integer("post_id").notNull().references(() => posts.id),
-  userId: integer("user_id").notNull().references(() => users.id),
-  body: text("body").notNull(),
+export const messages = sherpy.table("messages", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),    // 폴링 커서
+  roomId: integer("room_id").notNull().references(() => chatRooms.id, { onDelete: "cascade" }),
+  senderId: integer("sender_id").references(() => users.id), // SYSTEM 메시지는 NULL
+  type: varchar("type", { length: 10 }).notNull().default("TEXT"), // TEXT | SYSTEM
+  content: text("content").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
-});
+}, (t) => [index("idx_messages_room").on(t.roomId, t.id)]);
+
+export const reports = sherpy.table("reports", {
+  id: serial("id").primaryKey(),
+  reporterId: integer("reporter_id").notNull().references(() => users.id),
+  reportedUserId: integer("reported_user_id").notNull().references(() => users.id),
+  roomId: integer("room_id").references(() => chatRooms.id),
+  messageId: integer("message_id"),
+  reason: varchar("reason", { length: 20 }).notNull(),
+  detail: text("detail"),
+  messageContentSnapshot: text("message_content_snapshot"),
+  status: varchar("status", { length: 12 }).notNull().default("PENDING"), // PENDING|RESOLVED|DISMISSED
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  handledAt: timestamp("handled_at", { withTimezone: true }),
+}, (t) => [uniqueIndex("reports_reporter_message_key").on(t.reporterId, t.messageId)]);
 
 /* ── 기상 캐시 (30분) ────────────────────────── */
-export const weatherCache = pgTable("weather_cache", {
+export const weatherCache = sherpy.table("weather_cache", {
   nx: integer("nx").notNull(),
   ny: integer("ny").notNull(),
   baseDate: varchar("base_date", { length: 8 }).notNull(),
@@ -178,7 +202,7 @@ export const weatherCache = pgTable("weather_cache", {
 }, (t) => [primaryKey({ columns: [t.nx, t.ny, t.baseDate, t.baseTime] })]);
 
 /* ── 명목상 기능 (P3) — UI + 시드 데이터만 ───── */
-export const marketItems = pgTable("market_items", {
+export const marketItems = sherpy.table("market_items", {
   id: serial("id").primaryKey(),
   title: varchar("title", { length: 60 }).notNull(),
   price: integer("price").notNull(),
@@ -187,7 +211,7 @@ export const marketItems = pgTable("market_items", {
   status: varchar("status", { length: 10 }).notNull().default("onsale"),
 });
 
-export const crowdMock = pgTable("crowd_mock", {
+export const crowdMock = sherpy.table("crowd_mock", {
   areaCode: varchar("area_code", { length: 20 }).primaryKey(),
   name: varchar("name", { length: 40 }).notNull(),
   level: integer("level").notNull(),   // 1 여유 / 2 보통 / 3 혼잡

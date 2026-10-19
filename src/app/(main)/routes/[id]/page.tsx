@@ -2,17 +2,23 @@
 
 import { use, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Heart, Send, Clock, Ruler, Mountain, Info, Check } from "lucide-react";
+import { Heart, Send, Clock, Ruler, Mountain, Info, Check, Trash2 } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import RouteMap from "@/components/map/RouteMap";
 import Sheet from "@/components/ui/Sheet";
 import { sendCommand } from "@/hooks/useRobotStream";
-import { routeById, routeLength, routeDurationMin, POI_LABEL } from "@/lib/demo/data";
+import { ROUTES, routeLength, routeDurationMin, POI_LABEL } from "@/lib/demo/data";
+import { useMyRoutes, deleteMyRoute } from "@/lib/my-routes";
+import { useLoginGate } from "@/components/ui/LoginGate";
 
 /** S08 코스 상세 + 셰르피에 전송 (PRD F-4) */
 export default function RouteDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const r = routeById(Number(id));
+  const mine = useMyRoutes();
+  const { user, guard, gate } = useLoginGate();
+  const isMine = mine.some((x) => x.id === Number(id));
+  const r = ROUTES.find((x) => x.id === Number(id)) ?? mine.find((x) => x.id === Number(id));
+  const [delOpen, setDelOpen] = useState(false);
   const router = useRouter();
   const [liked, setLiked] = useState(false);
   const [sendOpen, setSendOpen] = useState(false);
@@ -24,7 +30,7 @@ export default function RouteDetail({ params }: { params: Promise<{ id: string }
     [r],
   );
 
-  if (!r) return <><PageHeader title="코스" back /><p className="p-6 text-center text-muted">코스를 찾을 수 없습니다.</p></>;
+  if (!r) return <><PageHeader title="코스" back /><p className="p-6 text-center text-muted">{Number(id) > 1000 ? "로그인한 계정의 코스예요. 로그인 후 다시 열어주세요." : "코스를 찾을 수 없습니다."}</p></>;
 
   const send = async () => {
     await sendCommand(1, "SET_ROUTE", { route_id: r.id });
@@ -35,7 +41,7 @@ export default function RouteDetail({ params }: { params: Promise<{ id: string }
   return (
     <div>
       <PageHeader title={r.name} back right={
-        <button onClick={() => setLiked((v) => !v)} aria-label="좋아요" className="touch flex items-center justify-center">
+        <button onClick={() => guard("좋아요를 누르려면", () => setLiked((v) => !v))} aria-label="좋아요" className="touch flex items-center justify-center">
           <Heart size={20} className={liked ? "fill-level-3 text-level-3" : "text-muted"} />
         </button>
       } />
@@ -43,7 +49,10 @@ export default function RouteDetail({ params }: { params: Promise<{ id: string }
 
       <div className="px-4 pt-4">
         <p className="text-sm text-body">{r.description}</p>
-        <p className="mt-1 text-xs text-muted">by {r.author} · ♥ {r.likeCount + (liked ? 1 : 0)}</p>
+        <p className="mt-1 flex items-center gap-1.5 text-xs text-muted">
+          {isMine && <span className="rounded-full bg-sherpy-600 px-2 py-0.5 text-[10px] font-semibold text-white">내 코스</span>}
+          by {r.author} · ♥ {r.likeCount + (liked ? 1 : 0)}{isMine && (r.isPublic ? " · 공개" : " · 비공개")}
+        </p>
 
         <div className="mt-4 grid grid-cols-3 gap-2">
           <Info3 icon={<Ruler size={16} />} label="거리" value={`${(routeLength(r.points) / 1000).toFixed(2)}km`} />
@@ -51,14 +60,14 @@ export default function RouteDetail({ params }: { params: Promise<{ id: string }
           <Info3 icon={<Mountain size={16} />} label="난이도" value={r.difficulty} />
         </div>
 
-        <section className="card mt-3 p-4">
+        {r.pois.length > 0 && <section className="card mt-3 p-4">
           <h2 className="text-sm font-bold">코스 위 편의시설</h2>
           <ul className="mt-2 space-y-1.5 text-sm">
             {r.pois.map((p, i) => (
               <li key={i} className="flex justify-between"><span className="text-muted">{POI_LABEL[p.type]}</span><span>{p.label}</span></li>
             ))}
           </ul>
-        </section>
+        </section>}
 
         <section className="card mt-3 p-4">
           <h2 className="text-sm font-bold">셰르피 주행 상태</h2>
@@ -77,12 +86,22 @@ export default function RouteDetail({ params }: { params: Promise<{ id: string }
                 className="touch mt-4 mb-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-sherpy-600 py-3.5 font-semibold text-white disabled:bg-level-0">
           {sent ? <><Check size={18} /> 전송 완료 — 대시보드로 이동</> : <><Send size={18} /> 셰르피에 전송</>}
         </button>
+        {isMine && user && (
+          <button onClick={() => setDelOpen(true)} className="touch -mt-3 mb-6 flex w-full items-center justify-center gap-1.5 text-sm text-level-3">
+            <Trash2 size={15} /> 내 코스에서 삭제
+          </button>
+        )}
       </div>
 
       <Sheet open={sendOpen} title="이 코스를 셰르피에 보낼까요?" confirmLabel="전송" onClose={() => setSendOpen(false)} onConfirm={send}>
         <b>{r.name}</b>을(를) 주행 코스로 지정합니다.
         {r.taught ? " 대시보드에서 자동주행을 시작할 수 있어요." : " 티칭 모드로 한 번 주행해 주세요."}
       </Sheet>
+      <Sheet open={delOpen} title="이 코스를 삭제할까요?" confirmLabel="삭제" danger onClose={() => setDelOpen(false)}
+             onConfirm={() => { if (user) deleteMyRoute(r.id); router.replace("/map"); }}>
+        <b>{r.name}</b>이(가) 내 코스에서 사라집니다.
+      </Sheet>
+      {gate}
     </div>
   );
 }
