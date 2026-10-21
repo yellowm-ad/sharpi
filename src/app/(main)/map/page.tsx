@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Plus, Users, Heart, Lock, LogIn } from "lucide-react";
 import RouteMap from "@/components/map/RouteMap";
 import { DEOKJIN } from "@/components/weather/WalkScoreCard";
@@ -41,7 +41,30 @@ export default function MapPage() {
     [showCrowd],
   );
   const sel = list.find((r) => r.id === selected);
-  const fitTo = useMemo(() => (tab === "mine" && sel ? sel.points : undefined), [tab, sel]);
+  // 고른 코스로 지도가 따라간다 (추천 코스도 마찬가지)
+  const fitTo = useMemo(() => sel?.points, [sel]);
+
+  // 카드를 옆으로 넘기면 가운데 온 카드가 선택된다 — 지도와 카드가 항상 같은 코스를 가리키게
+  const rail = useRef<HTMLDivElement>(null);
+  const scrollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onRailScroll = () => {
+    if (scrollTimer.current) clearTimeout(scrollTimer.current);
+    scrollTimer.current = setTimeout(() => {
+      const el = rail.current;
+      if (!el) return;
+      const mid = el.scrollLeft + el.clientWidth / 2;
+      let best: { id: number; d: number } | null = null;
+      for (const c of Array.from(el.children) as HTMLElement[]) {
+        const d = Math.abs(c.offsetLeft + c.offsetWidth / 2 - mid);
+        if (!best || d < best.d) best = { id: Number(c.dataset.id), d };
+      }
+      if (best && best.id !== selected) setPicked(best.id);
+    }, 120);
+  };
+  const pick = (id: number, el: HTMLElement) => {
+    setPicked(id);
+    el.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+  };
 
   return (
     <div className="relative">
@@ -82,10 +105,12 @@ export default function MapPage() {
           <Empty icon={<Plus size={20} />} title="아직 저장한 코스가 없어요"
                  action={<Link href="/routes/new" className="block rounded-xl bg-sherpy-600 py-2.5 text-center text-sm font-semibold text-white">첫 코스 그리기</Link>} />
         ) : (
-          <div className="no-scrollbar flex snap-x gap-3 overflow-x-auto px-4 pb-1">
+          <div ref={rail} onScroll={onRailScroll} className="no-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-4 px-4 pb-1">
             {list.map((r) => (
-              <div key={r.id} role="button" tabIndex={0} onClick={() => setPicked(r.id)}
-                   className={`card w-[78%] shrink-0 snap-center p-4 text-left shadow-lg transition ${r.id === selected ? "border-sherpy-600 ring-2 ring-sherpy-600/20" : ""}`}>
+              <div key={r.id} data-id={r.id} role="button" tabIndex={0} aria-pressed={r.id === selected}
+                   onClick={(e) => pick(r.id, e.currentTarget)}
+                   onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && e.target === e.currentTarget && pick(r.id, e.currentTarget)}
+                   className={`card w-[78%] shrink-0 snap-center p-4 text-left shadow-lg transition duration-300 ${r.id === selected ? "border-sherpy-600 ring-2 ring-sherpy-600/20" : "scale-[.96] opacity-90"}`}>
                 <div className="flex items-center gap-1.5">
                   {tab === "mine" && <span className="rounded-full bg-sherpy-600 px-2 py-0.5 text-[11px] font-semibold text-white">내 코스</span>}
                   <span className="rounded-full bg-sherpy-50 px-2 py-0.5 text-[11px] font-semibold text-sherpy-700">{r.difficulty}</span>
@@ -94,7 +119,7 @@ export default function MapPage() {
                 </div>
                 <p className="mt-2 truncate font-bold">{r.name}</p>
                 <p className="tabular text-xs text-muted">{(routeLength(r.points) / 1000).toFixed(2)}km · 약 {routeDurationMin(r.points)}분 · by {r.author}</p>
-                <Link href={`/routes/${r.id}`} className="mt-3 block rounded-xl bg-sherpy-600 py-2 text-center text-sm font-semibold text-white">
+                <Link href={`/routes/${r.id}`} className="press mt-3 block rounded-xl bg-sherpy-600 py-2 text-center text-sm font-semibold text-white">
                   코스 보기
                 </Link>
               </div>

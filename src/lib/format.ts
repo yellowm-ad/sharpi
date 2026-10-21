@@ -32,3 +32,10 @@ export function formatDateDivider(iso: string): string {
 export function isSameDay(a: string, b: string): boolean {
   return startOfDay(new Date(a)) === startOfDay(new Date(b));
 }
+
+/** 받침에 맞는 조사 — josa("콩이", "와", "과") → "콩이와", josa("보리", "을", "를") 처럼 앞이 받침 있을 때 쓰는 꼴을 두 번째로 */
+export function josa(word: string, noBatchim: string, batchim: string): string {
+  const last = word.charCodeAt(word.length - 1);
+  if (last < 0xac00 || last > 0xd7a3) return `${word}${noBatchim}(${batchim})`; // 한글이 아니면 둘 다 표기
+  return word + ((last - 0xac00) % 28 ? batchim : noBatchim);
+}

@@ -125,6 +125,8 @@ export interface DemoWalk {
   pullCount: number;
   warnings: { at: string; level: number; reason: string }[];
   walkScore: number;
+  /** 실제로 지나간 좌표 — 산책 중 화면에서 기록한 경우에만 있다 */
+  trail?: [number, number][];
 }
 
 export const WALKS: DemoWalk[] = [

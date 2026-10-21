@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Thermometer, Flame, Droplets, Umbrella, Lightbulb, TriangleAlert } from "lucide-react";
+import { useTween } from "@/hooks/useTween";
 import { calcWalkScore, type WalkScoreResult, type WeatherInput } from "@/lib/weather/walk-score";
 
 /** 시연 장소 — 덕진공원 (전북대 인근) */
@@ -39,7 +40,7 @@ export default function WalkScoreCard() {
   }, []);
 
   if (!data) {
-    return <section className="h-56 animate-pulse rounded-3xl bg-sherpy-100" />;
+    return <section className="skeleton h-56 rounded-3xl" aria-label="날씨 불러오는 중" />;
   }
 
   const { raw, walkScore: w } = data;
@@ -55,23 +56,13 @@ export default function WalkScoreCard() {
         </div>
       )}
 
-      <section className="overflow-hidden rounded-3xl bg-gradient-to-br from-sherpy-600 to-sherpy-700 p-5 text-white shadow-lg shadow-sherpy-600/20">
+      <section className="animate-fade relative overflow-hidden rounded-3xl bg-gradient-to-br from-sherpy-600 to-sherpy-700 p-5 text-white shadow-lg shadow-sherpy-600/20">
         <div className="flex items-start justify-between">
           <div>
             <p className="text-sm text-sherpy-100">오늘의 산책 · 덕진공원</p>
             <p className="mt-1 text-xl font-bold">{w.label}</p>
           </div>
-          <div className="relative flex h-20 w-20 items-center justify-center">
-            <svg viewBox="0 0 36 36" className="absolute inset-0 -rotate-90">
-              <circle cx="18" cy="18" r="15.5" fill="none" stroke="rgb(255 255 255 / .2)" strokeWidth="3" />
-              <circle cx="18" cy="18" r="15.5" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round"
-                      strokeDasharray={`${(w.score / 100) * 97.4} 97.4`} />
-            </svg>
-            <div className="text-center leading-none">
-              <span className="tabular text-2xl font-bold">{w.score}</span>
-              <span className="block text-[10px] text-sherpy-100">점</span>
-            </div>
-          </div>
+          <ScoreRing score={w.score} />
         </div>
 
         <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
@@ -91,6 +82,24 @@ export default function WalkScoreCard() {
         </p>
       </section>
     </>
+  );
+}
+
+/** 점수 고리 — 0에서 차오르며 숫자도 함께 올라간다(카운트업) */
+function ScoreRing({ score }: { score: number }) {
+  const v = useTween(score, 1100, 0);
+  return (
+    <div className="animate-pop relative flex h-20 w-20 items-center justify-center">
+      <svg viewBox="0 0 36 36" className="absolute inset-0 -rotate-90">
+        <circle cx="18" cy="18" r="15.5" fill="none" stroke="rgb(255 255 255 / .2)" strokeWidth="3" />
+        <circle cx="18" cy="18" r="15.5" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round"
+                strokeDasharray={`${(v / 100) * 97.4} 97.4`} />
+      </svg>
+      <div className="text-center leading-none">
+        <span className="tabular text-2xl font-bold">{Math.round(v)}</span>
+        <span className="block text-[10px] text-sherpy-100">점</span>
+      </div>
+    </div>
   );
 }
 

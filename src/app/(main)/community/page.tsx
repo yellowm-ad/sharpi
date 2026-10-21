@@ -47,10 +47,10 @@ export default function CommunityPage() {
 
       <ul className="mt-3 divide-y divide-line border-y border-line bg-surface">
         {rooms === null
-          ? Array.from({ length: 4 }).map((_, i) => <li key={i} className="h-[76px] animate-pulse bg-surface" />)
+          ? Array.from({ length: 4 }).map((_, i) => <li key={i} className="flex h-[76px] items-center gap-3 px-4"><span className="skeleton h-12 w-12 rounded-2xl" /><span className="flex-1 space-y-2"><span className="skeleton block h-3.5 w-1/2 rounded" /><span className="skeleton block h-3 w-3/4 rounded" /></span></li>)
           : rooms.map((r) => (
               <li key={r.id}>
-                <Link href={`/community/${r.id}`} className="flex items-center gap-3 px-4 py-3.5 active:bg-bg">
+                <Link href={`/community/${r.id}`} className="flex items-center gap-3 px-4 py-3.5 transition-colors active:bg-sherpy-50">
                   <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-sherpy-50 text-2xl">{r.emoji}</span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-bold">{r.title}</p>

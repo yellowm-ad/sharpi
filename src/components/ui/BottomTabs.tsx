@@ -26,7 +26,7 @@ export default function BottomTabs() {
               <Link
                 href={t.href}
                 className={[
-                  "touch flex flex-col items-center justify-center gap-0.5 pt-1.5 text-[11px]",
+                  "press touch flex flex-col items-center justify-center gap-0.5 pt-1.5 text-[11px]",
                   t.primary ? "font-semibold" : "",
                   active ? "text-sherpy-600" : "text-muted",
                 ].join(" ")}
@@ -41,7 +41,10 @@ export default function BottomTabs() {
                     <Icon size={22} strokeWidth={2.2} />
                   </span>
                 ) : (
-                  <Icon size={22} strokeWidth={active ? 2.4 : 1.8} />
+                  // 활성화되는 순간 아이콘이 톡 튄다 (key 가 바뀌면 애니메이션이 다시 재생됨)
+                  <span key={String(active)} className={active ? "animate-tab" : ""}>
+                    <Icon size={22} strokeWidth={active ? 2.4 : 1.8} />
+                  </span>
                 )}
                 {t.label}
               </Link>

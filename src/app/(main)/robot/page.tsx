@@ -46,11 +46,19 @@ export default function RobotDashboard() {
   const mode = latest?.mode ?? "idle";
   const route = findRoute(latest?.routeId);
 
-  // L2 이상으로 올라가면 진동 (PRD F-1 수용기준)
+  // L2 이상으로 올라가면 진동 + 게이지 카드 흔들림·번쩍임 (PRD F-1 수용기준)
+  const [hit, setHit] = useState(false);
+  const hitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    if (level >= 2 && prevLevel.current < 2) navigator.vibrate?.([200, 100, 200]);
+    if (level >= 2 && level > prevLevel.current) {
+      navigator.vibrate?.([200, 100, 200]);
+      setHit(true);
+      if (hitTimer.current) clearTimeout(hitTimer.current);
+      hitTimer.current = setTimeout(() => setHit(false), 650);
+    }
     prevLevel.current = level;
   }, [level]);
+  useEffect(() => () => { if (hitTimer.current) clearTimeout(hitTimer.current); }, []);
 
   // 티칭 종료(teach → idle) 시 내 코스에 키프레임 수를 기록
   useEffect(() => {
@@ -87,11 +95,12 @@ export default function RobotDashboard() {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold">셰르피</h1>
-            <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${MODE[mode].c}`}>{MODE[mode].t}</span>
+            <span key={mode} className={`animate-pop rounded-full px-2 py-0.5 text-[11px] font-semibold ${MODE[mode].c}`}>{MODE[mode].t}</span>
             {demo && <span className="rounded-full border border-dashed border-sherpy-400 px-2 py-0.5 text-[10px] text-sherpy-600">시연 모드</span>}
           </div>
-          <p className={`mt-0.5 text-xs ${CONN.c}`}>
-            ● {CONN.t}
+          <p className={`mt-0.5 flex items-center gap-1.5 text-xs ${CONN.c}`}>
+            {state === "online" ? <span className="live-dot" /> : <span className="inline-block h-[7px] w-[7px] rounded-full bg-current" />}
+            {CONN.t}
             {latest && <span className="tabular text-muted"> · 마지막 수신 {new Date(latest.ts).toLocaleTimeString("ko-KR")}</span>}
           </p>
         </div>
@@ -110,7 +119,8 @@ export default function RobotDashboard() {
         </p>
       )}
 
-      <section className="card p-4">
+      <section className={`card p-4 ${hit ? "animate-hit" : ""}`}
+               style={{ "--flash": level >= 3 ? "rgb(220 38 38 / .55)" : "rgb(234 88 12 / .5)" } as React.CSSProperties}>
         <TensionGauge value={latest?.tensionN ?? null} />
         <div className="mt-2 flex justify-center gap-3 text-[10px] text-muted">
           <span>감속 {THRESHOLDS.F_SOFT}N</span><span>강한 견인 {THRESHOLDS.F_HARD}N</span><span>정지 {THRESHOLDS.F_ESTOP}N</span>
@@ -185,11 +195,13 @@ export default function RobotDashboard() {
           </div>
           <input type="range" min={0.5} max={1.5} step={0.1} value={limit} disabled={offline}
                  onChange={(e) => setLimit(Number(e.target.value))}
-                 onPointerUp={() => cmd("SET_SPEED_LIMIT", { limit })}
+                 // 끌기를 마쳤을 때(터치·마우스) 또는 방향키를 뗐을 때 한 번만 보낸다
+                 onPointerUp={(e) => cmd("SET_SPEED_LIMIT", { limit: Number(e.currentTarget.value) })}
+                 onKeyUp={(e) => e.key.startsWith("Arrow") && cmd("SET_SPEED_LIMIT", { limit: Number(e.currentTarget.value) })}
                  className="mt-3 w-full accent-sherpy-600" />
         </div>
 
-        <Link href="/robot/camera" className="touch mt-2 flex items-center justify-center gap-2 rounded-xl bg-sherpy-900 py-3 text-sm font-semibold text-white">
+        <Link href="/robot/camera" className="press touch mt-2 flex items-center justify-center gap-2 rounded-xl bg-sherpy-900 py-3 text-sm font-semibold text-white">
           <Video size={16} /> 실시간 카메라 보기
         </Link>
       </section>
@@ -282,7 +294,7 @@ function Btn({ children, onClick, disabled, primary, icon }: {
   return (
     <button onClick={onClick} disabled={disabled}
       className={[
-        "touch flex items-center justify-center gap-1.5 rounded-xl py-3 text-sm font-semibold transition active:scale-[.98] disabled:opacity-40",
+        "press touch flex items-center justify-center gap-1.5 rounded-xl py-3 text-sm font-semibold disabled:opacity-40 disabled:active:scale-100",
         primary ? "bg-sherpy-600 text-white" : "border border-line bg-surface text-body",
       ].join(" ")}>
       {icon}{children}

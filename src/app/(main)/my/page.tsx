@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronRight, Bot, Footprints, Route, Store, LogOut, ShieldAlert, LogIn } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
-import { DOG, WALKS } from "@/lib/demo/data";
+import { useDog } from "@/lib/dog";
+import { useWalks } from "@/lib/my-walks";
 import { useUser, logout } from "@/lib/session";
 import { useMyRoutes } from "@/lib/my-routes";
 
@@ -12,6 +13,8 @@ import { useMyRoutes } from "@/lib/my-routes";
 export default function MyPage() {
   const user = useUser();
   const mine = useMyRoutes();
+  const dog = useDog();
+  const walks = useWalks();
   const router = useRouter();
 
   return (
@@ -21,11 +24,12 @@ export default function MyPage() {
         {user ? (
           <section className="card flex items-center gap-4 p-4">
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-sherpy-100 text-4xl">🐶</div>
-            <div>
-              <p className="text-lg font-bold">{DOG.name}</p>
-              <p className="text-sm text-muted">{DOG.breed} · {DOG.weightKg}kg · {DOG.age}</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-lg font-bold">{dog.name}</p>
+              <p className="text-sm text-muted">{[dog.breed, dog.weightKg ? `${dog.weightKg}kg` : "", dog.age].filter(Boolean).join(" · ")}</p>
               <p className="mt-0.5 text-xs text-muted">보호자 {user.nickname} (@{user.username})</p>
             </div>
+            <Link href="/onboarding/dog?next=/my" className="press shrink-0 rounded-full border border-line px-3 py-1.5 text-xs font-semibold text-body">수정</Link>
           </section>
         ) : (
           <section className="rounded-3xl bg-gradient-to-br from-sherpy-600 to-sherpy-700 p-5 text-white">
@@ -71,7 +75,7 @@ export default function MyPage() {
         )}
 
         <ul className="card mt-3 divide-y divide-line">
-          <Row href="/walks" icon={<Footprints size={18} />} label="산책 기록" sub={`${WALKS.length}회`} />
+          <Row href="/walks" icon={<Footprints size={18} />} label="산책 기록" sub={`${walks.length}회`} />
           <Row href="/map" icon={<Route size={18} />} label="코스 지도" />
           <Row href="/market" icon={<Store size={18} />} label="마켓" sub="준비 중" />
           {user && (

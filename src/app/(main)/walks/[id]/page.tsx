@@ -4,25 +4,31 @@ import { use, useMemo } from "react";
 import { TriangleAlert } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import RouteMap from "@/components/map/RouteMap";
-import { WALKS, routeById } from "@/lib/demo/data";
+import { routeById } from "@/lib/demo/data";
+import { findRoute } from "@/lib/my-routes";
+import { useWalks, isLocalWalk } from "@/lib/my-walks";
 import { SAFETY_COLOR } from "@/lib/robot/types";
 
 /** S13 산책 기록 상세 — 자동 리포트 (PRD F-6) */
 export default function WalkDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const w = WALKS.find((x) => x.id === Number(id));
-  const r = w ? routeById(w.routeId) : undefined;
-  const lines = useMemo(() => (r ? [{ id: r.id, points: r.points, color: "#06B6D4", weight: 6 }] : []), [r]);
+  const walks = useWalks();
+  const w = walks.find((x) => x.id === Number(id));
+  const r = w ? routeById(w.routeId) ?? findRoute(w.routeId) : undefined;
+  // 내가 기록한 산책은 실제로 지나간 궤적을, 시연 기록은 코스 선을 그린다
+  const path = w?.trail && w.trail.length > 1 ? w.trail : r?.points;
+  const lines = useMemo(() => (path ? [{ id: "walk", points: path, color: "#06B6D4", weight: 6 }] : []), [path]);
 
-  if (!w || !r) return <><PageHeader title="산책 기록" back /><p className="p-6 text-center text-muted">기록이 없습니다.</p></>;
+  if (!w || !path) return <><PageHeader title="산책 기록" back /><p className="p-6 text-center text-muted">기록이 없습니다.</p></>;
   const d = new Date(w.startedAt);
 
   return (
     <div>
       <PageHeader title={`${d.getMonth() + 1}월 ${d.getDate()}일 산책`} back />
-      <RouteMap center={r.points[0]} lines={lines} fitTo={r.points} className="h-56" />
+      <RouteMap center={path[0]} lines={lines} fitTo={path} className="h-56" />
       <div className="px-4 pt-4 pb-8">
-        <p className="text-sm text-muted">{r.name} · {d.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })} 시작 · 산책적합도 {w.walkScore}점</p>
+        <p className="text-sm text-muted">{r?.name ?? "자유 산책"} · {d.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })} 시작{w.walkScore ? ` · 산책적합도 ${w.walkScore}점` : ""}
+          {isLocalWalk(w.id) && <span className="ml-1.5 rounded-full bg-sherpy-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">이 기기에 저장됨</span>}</p>
         <p className="tabular mt-1 text-2xl font-bold">
           {(w.distanceM / 1000).toFixed(2)}km · {Math.round(w.durationS / 60)}분
         </p>
