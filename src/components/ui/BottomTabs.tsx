@@ -15,6 +15,9 @@ const TABS = [
 export default function BottomTabs() {
   const pathname = usePathname();
 
+  // 화면 전체를 덮는 페이지(카메라·채팅방)에서는 탭을 그리지 않는다 — 전환 중에 탭이 위로 비치지 않게
+  if (pathname === "/robot/camera" || /^\/community\/\d+/.test(pathname)) return null;
+
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 mx-auto max-w-[480px] border-t border-line bg-surface/95 pb-safe backdrop-blur">
       <ul className="flex">

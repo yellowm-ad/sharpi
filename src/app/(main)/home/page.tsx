@@ -11,6 +11,7 @@ import { useMyRoutes } from "@/lib/my-routes";
 import { ROUTES, routeLength, routeDurationMin } from "@/lib/demo/data";
 import { useDog } from "@/lib/dog";
 import { useWalks, pullTrend } from "@/lib/my-walks";
+import { useLiveWalk } from "@/lib/live-walk";
 import { josa } from "@/lib/format";
 
 const MODE_LABEL = { idle: "대기 중", teach: "티칭 중", follow: "자동주행 중", estop: "정지됨" } as const;
@@ -22,6 +23,7 @@ export default function HomePage() {
   const mine = useMyRoutes();
   const dog = useDog();
   const walks = useWalks();
+  const live = useLiveWalk();
   // 최근 7일 기록만 집계 — 렌더 중 Date.now() 대신 마운트 시각을 써서 하이드레이션 값이 흔들리지 않게
   const [now] = useState(() => Date.now());
   const week = walks.filter((w) => now - Date.parse(w.startedAt) < 7 * 86_400_000);
@@ -41,6 +43,16 @@ export default function HomePage() {
           <Link href="/login?next=/home" className="touch flex items-center rounded-full border border-sherpy-400 px-4 text-sm font-semibold text-sherpy-600">로그인</Link>
         )}
       </header>
+
+      {/* 끝내지 않은 산책이 있으면 맨 위에서 이어갈 수 있게 */}
+      {live && (
+        <Link href="/walks/live" className="press animate-drop mb-3 flex items-center gap-2 rounded-2xl bg-ink px-4 py-3 text-sm text-white">
+          <span className="text-level-3"><span className="live-dot" /></span>
+          <span className="flex-1 font-semibold">산책 기록 중 · {Math.floor((now - live.startedAt) / 60000)}분 경과</span>
+          <span className="text-xs text-sherpy-100">이어하기</span>
+          <ChevronRight size={16} />
+        </Link>
+      )}
 
       <div style={{ "--i": 1 } as React.CSSProperties}><WalkScoreCard /></div>
 

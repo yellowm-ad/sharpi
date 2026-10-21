@@ -7,11 +7,13 @@ import { routeById } from "@/lib/demo/data";
 import { useDog } from "@/lib/dog";
 import { findRoute } from "@/lib/my-routes";
 import { useWalks, pullTrend, isLocalWalk } from "@/lib/my-walks";
+import { useLiveWalk } from "@/lib/live-walk";
 
 /** S13 산책 기록 목록 (PRD F-6) */
 export default function WalksPage() {
   const dog = useDog();
   const walks = useWalks();
+  const live = useLiveWalk();
   const total = walks.reduce((s, w) => s + w.distanceM, 0);
   const trend = pullTrend(walks);
   const chart = walks.slice(0, 8).reverse(); // 최근 8회, 왼쪽이 오래된 것
@@ -22,7 +24,7 @@ export default function WalksPage() {
       <PageHeader title="산책 기록" back />
       <div className="px-4 pt-4">
         <Link href="/walks/live" className="press touch flex items-center justify-center gap-2 rounded-2xl bg-sherpy-600 py-3.5 font-semibold text-white shadow-lg shadow-sherpy-600/20">
-          <Play size={18} /> 산책 시작
+          <Play size={18} /> {live ? "기록 중인 산책으로 돌아가기" : "산책 시작"}
         </Link>
 
         <section className="card mt-3 p-4">

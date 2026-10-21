@@ -13,7 +13,7 @@ import { THRESHOLDS, FAULT_LABEL } from "@/lib/robot/types";
 import { findRoute, useMyRoutes, markTaught } from "@/lib/my-routes";
 import { useUser } from "@/lib/session";
 import { ROUTES } from "@/lib/demo/data";
-import type { CommandLog } from "@/lib/robot/demo-robot";
+import { demoRobot, type CommandLog } from "@/lib/robot/demo-robot";
 
 const MODE = {
   idle:   { t: "대기",     c: "bg-line text-body" },
@@ -67,6 +67,10 @@ export default function RobotDashboard() {
     }
     prevMode.current = mode;
   }, [mode, user, route, latest?.kfIndex]);
+
+  // 슬라이더는 로봇에 실제로 걸린 값에서 시작한다 (새로고침·다른 화면에서 돌아와도 1.2로 되돌아가지 않게)
+  // TODO(M2): 실로봇은 텔레메트리에 speed_limit 을 실어 보내면 그 값을 쓴다
+  useEffect(() => { if (demo) setLimit(demoRobot().limit); }, [demo]);
 
   const needsTeach = !!route && !route.taught;
 

@@ -10,6 +10,7 @@ import { sendCommand } from "@/hooks/useRobotStream";
 import { ROUTES, routeLength, routeDurationMin, POI_LABEL } from "@/lib/demo/data";
 import { useMyRoutes, deleteMyRoute } from "@/lib/my-routes";
 import { useLoginGate } from "@/components/ui/LoginGate";
+import { josa } from "@/lib/format";
 
 /** S08 코스 상세 + 셰르피에 전송 (PRD F-4) */
 export default function RouteDetail({ params }: { params: Promise<{ id: string }> }) {
@@ -94,12 +95,12 @@ export default function RouteDetail({ params }: { params: Promise<{ id: string }
       </div>
 
       <Sheet open={sendOpen} title="이 코스를 셰르피에 보낼까요?" confirmLabel="전송" onClose={() => setSendOpen(false)} onConfirm={send}>
-        <b>{r.name}</b>을(를) 주행 코스로 지정합니다.
+        <b>{r.name}</b>{josa(r.name, "를", "을").slice(r.name.length)} 주행 코스로 지정합니다.
         {r.taught ? " 대시보드에서 자동주행을 시작할 수 있어요." : " 티칭 모드로 한 번 주행해 주세요."}
       </Sheet>
       <Sheet open={delOpen} title="이 코스를 삭제할까요?" confirmLabel="삭제" danger onClose={() => setDelOpen(false)}
              onConfirm={() => { if (user) deleteMyRoute(r.id); router.replace("/map"); }}>
-        <b>{r.name}</b>이(가) 내 코스에서 사라집니다.
+        <b>{r.name}</b>{josa(r.name, "가", "이").slice(r.name.length)} 내 코스에서 사라집니다.
       </Sheet>
       {gate}
     </div>

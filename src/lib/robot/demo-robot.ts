@@ -24,6 +24,17 @@ export interface CommandLog {
 
 type Listener = () => void;
 
+/**
+ * 새로고침해도 가상 셰르피가 하던 일을 이어가도록 탭 단위(sessionStorage)로 상태를 보관한다.
+ * 시연 중 실수로 새로고침해도 자동주행이 처음으로 돌아가지 않는다.
+ * 탭마다 따로 두는 이유: 두 탭이 같은 상태를 동시에 굴리면 진행이 두 배로 빨라진다.
+ */
+const SAVE_KEY = "sherpy.demoRobot";
+interface Saved {
+  mode: TelemetryRow["mode"]; paused: boolean; kfIndex: number; kfTotal: number;
+  routeId: number | null; speedLimit: number; commands: CommandLog[]; cmdSeq: number; savedAt: number;
+}
+
 class DemoRobot {
   latest: TelemetryRow | null = null;
   commands: CommandLog[] = [];
@@ -44,6 +55,41 @@ class DemoRobot {
   private timer: ReturnType<typeof setInterval> | null = null;
   private listeners = new Set<Listener>();
 
+  constructor() {
+    this.restore();
+  }
+
+  private restore() {
+    let d: Saved | null = null;
+    try { d = JSON.parse(sessionStorage.getItem(SAVE_KEY) ?? "null"); } catch { /* 저장된 상태 없음 */ }
+    if (!d) return;
+    this.mode = d.mode; this.paused = d.paused; this.kfIndex = d.kfIndex; this.kfTotal = d.kfTotal;
+    this.routeId = d.routeId; this.speedLimit = d.speedLimit; this.cmdSeq = d.cmdSeq;
+    // 응답을 기다리던 명령은 새로고침으로 타이머가 사라졌으니 만료로 표시한다 — 사용자가 다시 보내게
+    this.commands = d.commands.map((c) => (c.status === "pending" || c.status === "sent" ? { ...c, status: "expired" as const } : c));
+
+    // 페이지가 꺼져 있던 동안에도 로봇은 계속 움직였다 — 그만큼 진행을 따라잡는다 (1초에 키프레임 1개)
+    const gap = Math.min(600, Math.floor((Date.now() - d.savedAt) / 1000));
+    if (gap > 0 && !this.paused) {
+      if (this.mode === "teach") { this.kfIndex += gap; this.kfTotal = this.kfIndex; }
+      else if (this.mode === "follow") {
+        this.kfIndex = Math.min(this.kfTotal, this.kfIndex + gap);
+        if (this.kfIndex >= this.kfTotal) this.mode = "idle";
+      }
+    }
+  }
+
+  private save() {
+    const d: Saved = {
+      mode: this.mode, paused: this.paused, kfIndex: this.kfIndex, kfTotal: this.kfTotal,
+      routeId: this.routeId, speedLimit: this.speedLimit, commands: this.commands, cmdSeq: this.cmdSeq, savedAt: Date.now(),
+    };
+    try { sessionStorage.setItem(SAVE_KEY, JSON.stringify(d)); } catch { /* 저장 못 해도 시연은 계속 */ }
+  }
+
+  /** 지금 걸린 최대 속도 제한(m/s) — 대시보드 슬라이더 초기값 */
+  get limit() { return this.speedLimit; }
+
   subscribe(fn: Listener) {
     this.listeners.add(fn);
     if (!this.timer) {
@@ -56,6 +102,7 @@ class DemoRobot {
   }
 
   private emit() {
+    this.save();
     this.listeners.forEach((fn) => fn());
   }
 

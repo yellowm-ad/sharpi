@@ -18,16 +18,31 @@ const C = 2 * Math.PI * R;
  * 오작동 방지를 위해 1초 길게 누르기로 발동한다.
  * 누르는 동안 고리가 차오르고(게임의 "길게 눌러 확정" 패턴), 손을 떼면 고리가 빠르게 되감긴다.
  * 키보드(Space/Enter 길게)로도 발동할 수 있다.
+ * 1초 전에 떼면 "더 길게"라는 안내를 잠깐 띄운다 — 실패했을 때 그 자리에서 알려주는 튜토리얼.
+ * 스크롤하는 동안에는 작게 줄어들어 뒤 카드를 덜 가리고, 멈추면 원래 크기로 돌아온다.
  */
 export default function EstopButton({ robotId, disabled }: { robotId: number; disabled?: boolean }) {
   const [holding, setHolding] = useState(false);
   const [status, setStatus] = useState<"idle" | "sending" | "ok" | "fail">("idle");
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reset = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [hint, setHint] = useState(false);
+  const hintTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [scrolling, setScrolling] = useState(false);
 
-  useEffect(() => () => {
-    if (timer.current) clearTimeout(timer.current);
-    if (reset.current) clearTimeout(reset.current);
+  useEffect(() => {
+    let idle: ReturnType<typeof setTimeout> | null = null;
+    const onScroll = () => {
+      setScrolling(true);
+      if (idle) clearTimeout(idle);
+      idle = setTimeout(() => setScrolling(false), 700);
+    };
+    addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      removeEventListener("scroll", onScroll);
+      if (idle) clearTimeout(idle);
+      [timer, reset, hintTimer].forEach((t) => t.current && clearTimeout(t.current));
+    };
   }, []);
 
   const start = () => {
@@ -39,11 +54,19 @@ export default function EstopButton({ robotId, disabled }: { robotId: number; di
 
   const cancel = () => {
     setHolding(false);
-    if (timer.current) { clearTimeout(timer.current); timer.current = null; }
+    if (timer.current) {
+      // 아직 발동 전에 뗐다 = 너무 짧게 누름
+      clearTimeout(timer.current);
+      timer.current = null;
+      setHint(true);
+      if (hintTimer.current) clearTimeout(hintTimer.current);
+      hintTimer.current = setTimeout(() => setHint(false), 2500);
+    }
   };
 
   const fire = async () => {
     timer.current = null;
+    setHint(false);
     setHolding(false);
     setStatus("sending");
     try {
@@ -64,6 +87,11 @@ export default function EstopButton({ robotId, disabled }: { robotId: number; di
       {status === "fail" && (
         <p role="alert" className="animate-drop max-w-[200px] rounded-lg bg-level-3 px-3 py-2 text-xs text-white">
           전송 실패 — 로봇의 물리 정지 버튼을 사용하세요
+        </p>
+      )}
+      {hint && status === "idle" && (
+        <p role="status" className="animate-drop max-w-[210px] rounded-lg bg-ink px-3 py-2 text-xs text-white">
+          1초 이상 눌러야 정지돼요<br /><span className="text-[10px] opacity-75">원격 정지는 보조 수단입니다</span>
         </p>
       )}
       {status === "ok" && (
@@ -87,11 +115,11 @@ export default function EstopButton({ robotId, disabled }: { robotId: number; di
         onContextMenu={(e) => e.preventDefault()}
         disabled={disabled || status === "sending"}
         aria-label="비상 정지 (1초간 길게 누르기)"
-        style={{ transition: holding ? `scale ${HOLD_MS}ms linear` : "scale .35s var(--ease-spring)" }}
+        style={{ transition: holding ? `scale ${HOLD_MS}ms linear` : "scale .35s var(--ease-spring)", transformOrigin: "bottom right" }}
         className={[
           "touch relative h-20 w-20 touch-none select-none whitespace-pre-line rounded-full bg-level-3 text-sm font-bold leading-tight text-white shadow-lg shadow-level-3/40 ring-4 ring-white",
           "disabled:opacity-40",
-          holding ? "scale-90" : "",
+          holding ? "scale-90" : scrolling ? "scale-75" : "",
           status === "ok" ? "animate-hit" : "",
         ].join(" ")}
       >
@@ -106,8 +134,8 @@ export default function EstopButton({ robotId, disabled }: { robotId: number; di
         </svg>
         <span className="relative">{status === "sending" ? "전송 중" : holding ? "계속\n누르세요" : "긴급\n정지"}</span>
       </button>
-      <p className="max-w-[120px] rounded bg-surface/80 px-1 text-right text-[10px] leading-tight text-muted">
-        1초 길게 누르기<br />보조 수단입니다
+      <p aria-hidden className={`rounded-full bg-surface/90 px-2 py-0.5 text-[10px] text-muted shadow-sm transition-opacity duration-200 ${scrolling ? "opacity-0" : ""}`}>
+        1초 길게 누르기
       </p>
     </div>
   );

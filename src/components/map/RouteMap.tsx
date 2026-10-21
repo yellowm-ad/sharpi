@@ -134,6 +134,12 @@ export default function RouteMap({
           카카오 개발자 콘솔에서 이 주소({typeof location !== "undefined" ? location.origin : ""})를
           JavaScript SDK 도메인에 등록했는지 확인하세요.
         </p>
+        {/* 로컬 개발은 localhost:3000 만 등록돼 있다 (docs/SETUP.md) — 다른 포트로 띄웠을 때 바로 알 수 있게 */}
+        {typeof location !== "undefined" && location.hostname === "localhost" && location.port !== "3000" && (
+          <p className="rounded-lg bg-level-1/10 px-3 py-2 text-xs text-body">
+            로컬 개발은 <b>localhost:3000</b> 만 등록돼 있어요. <code>npm run dev</code> 를 기본 포트로 실행하세요.
+          </p>
+        )}
       </div>
     );
   }

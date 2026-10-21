@@ -109,7 +109,9 @@ body {
 .animate-fade  { animation: fade-in .18s ease-out; }
 .animate-fade-out { animation: fade-out .18s ease-in forwards; }
 .animate-drop  { animation: drop-in .2s ease-out; }
-.animate-page  { animation: page-in .28s var(--ease-out) both; }
+/* backwards 만 쓴다 — 끝난 뒤에도 애니메이션 값이 남아 있으면(both/forwards) 쌓임 맥락이 생겨
+   안쪽의 전체화면 페이지(카메라·채팅방)와 바텀시트가 하단 탭 아래로 깔린다 */
+.animate-page  { animation: page-in .28s var(--ease-out) backwards; }
 .animate-pop   { animation: pop-in .42s var(--ease-spring) both; }
 .animate-float { animation: float-y 6s ease-in-out infinite; }
 .animate-shake { animation: shake .4s ease-out; }
@@ -117,7 +119,7 @@ body {
 .animate-tab   { animation: tab-pop .35s var(--ease-spring); }
 
 /* 순차 등장 — style={{ "--i": n }} 으로 순번을 준다 */
-.stagger > * { animation: rise-in .5s var(--ease-out) both; animation-delay: calc(var(--i, 0) * 70ms); }
+.stagger > * { animation: rise-in .5s var(--ease-out) backwards; animation-delay: calc(var(--i, 0) * 70ms); }
 
 /* 눌림 피드백 — 카드·버튼 공용 */
 .press { transition: transform .32s var(--ease-spring), box-shadow .2s ease; -webkit-tap-highlight-color: transparent; }

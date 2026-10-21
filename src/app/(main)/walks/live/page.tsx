@@ -13,23 +13,48 @@ import { THRESHOLDS, SAFETY_COLOR, FAULT_LABEL } from "@/lib/robot/types";
 import { distM, ROUTES } from "@/lib/demo/data";
 import { findRoute } from "@/lib/my-routes";
 import { saveWalk } from "@/lib/my-walks";
+import { getLiveWalk, saveLiveWalk, clearLiveWalk, newLiveWalk } from "@/lib/live-walk";
 
 /** 한 번에 이만큼 넘게 튀면 코스가 바뀐 것으로 보고 거리에 더하지 않는다 (GPS 튐 방지) */
 const JUMP_M = 80;
 const MIN_SAVE_S = 10;
 
-/** S12 산책 중 화면 — 텔레메트리로 거리·당김을 자동 집계하고, 끝나면 기록으로 저장한다 (PRD F-6) */
+/**
+ * S12 산책 중 화면 — 텔레메트리로 거리·당김을 자동 집계하고, 끝나면 기록으로 저장한다 (PRD F-6)
+ * 진행 상황은 계속 저장되므로 화면을 떠났다 돌아와도(새로고침·탭 정리 포함) 이어서 기록한다.
+ */
 export default function LiveWalk() {
   const router = useRouter();
   const { latest, state } = useRobotStream(1);
-  const startedAt = useRef(Date.now());
+  const agg = useRef(newLiveWalk());
+  const startedAt = useRef(agg.current.startedAt);
   const [elapsed, setElapsed] = useState(0);
   const [endOpen, setEndOpen] = useState(false);
-  const agg = useRef({
-    dist: 0, pulls: 0, maxT: 0, sumT: 0, n: 0, maxV: 0, last: null as [number, number] | null,
-    pulling: false, level: 0, warnings: [] as { at: string; level: number; reason: string }[],
-  });
   const [trail, setTrail] = useState<[number, number][]>([]);
+  const [resumed, setResumed] = useState(false);
+  const [ready, setReady] = useState(false);
+  const done = useRef(false); // 종료 후 이동하는 사이 들어온 텔레메트리가 기록을 되살리지 않게
+
+  // 이어서 기록할 산책이 있으면 불러온다 — 집계 effect 보다 먼저 돌아야 한다
+  useEffect(() => {
+    const saved = getLiveWalk();
+    if (saved) {
+      agg.current = saved;
+      startedAt.current = saved.startedAt;
+      setTrail(saved.trail);
+      setResumed(true);
+    } else {
+      saveLiveWalk(agg.current);
+    }
+    setReady(true);
+  }, []);
+
+  // 브라우저를 닫거나 새로고침하려 하면 한 번 묻는다 (기록은 저장돼 있어 다시 열면 이어진다)
+  useEffect(() => {
+    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); };
+    addEventListener("beforeunload", warn);
+    return () => removeEventListener("beforeunload", warn);
+  }, []);
 
   // 경과 시간은 시작 시각과의 차로 계산 — 백그라운드 탭에서 타이머가 느려져도 어긋나지 않는다
   useEffect(() => {
@@ -38,18 +63,18 @@ export default function LiveWalk() {
   }, []);
 
   useEffect(() => {
-    if (!latest) return;
+    if (!latest || !ready || done.current) return;
     const a = agg.current;
     if (latest.lat != null && latest.lng != null) {
       const p: [number, number] = [latest.lat, latest.lng];
       const step = a.last ? distM(a.last, p) : 0;
       if (step < JUMP_M) a.dist += step;
       a.last = p;
-      setTrail((tr) => {
-        const prev = tr[tr.length - 1];
-        if (prev && prev[0] === p[0] && prev[1] === p[1]) return tr;
-        return step >= JUMP_M ? [p] : [...tr, p];
-      });
+      const prev = a.trail[a.trail.length - 1];
+      if (!prev || prev[0] !== p[0] || prev[1] !== p[1]) {
+        a.trail = step >= JUMP_M ? [p] : [...a.trail, p];
+        setTrail(a.trail);
+      }
     }
     const t = latest.tensionN ?? 0;
     a.maxT = Math.max(a.maxT, t);
@@ -69,7 +94,8 @@ export default function LiveWalk() {
       a.warnings.push({ at, level: latest.safetyLevel, reason });
     }
     a.level = latest.safetyLevel;
-  }, [latest]);
+    saveLiveWalk(a);
+  }, [latest, ready]);
 
   const route = findRoute(latest?.routeId ?? 12) ?? ROUTES[0];
   const lines = useMemo(() => [
@@ -85,6 +111,8 @@ export default function LiveWalk() {
   const level = latest?.safetyLevel ?? 0;
 
   const finish = () => {
+    done.current = true;
+    clearLiveWalk();
     if (elapsed < MIN_SAVE_S) return router.replace("/walks");
     const w = saveWalk({
       routeId: route.id,
@@ -116,7 +144,7 @@ export default function LiveWalk() {
       <div className="-mt-5 relative z-10 rounded-t-3xl bg-surface px-4 pt-5 shadow-[0_-8px_24px_rgb(15_23_42/0.08)]">
         <p className="flex items-center justify-center gap-1.5 text-xs text-muted">
           {state === "online" && <span className="text-level-3"><span className="live-dot" /></span>}
-          {route.name} · {state === "online" ? "기록 중" : "연결 확인 중"}
+          {route.name} · {state === "online" ? (resumed ? "이어서 기록 중" : "기록 중") : "연결 확인 중"}
         </p>
         <p className="tabular mt-1 text-center text-5xl font-bold">{mm}:{ss}</p>
         <div className="mt-4 grid grid-cols-3 text-center">
@@ -126,9 +154,12 @@ export default function LiveWalk() {
           <M v={`${a.pulls}`} u="회" l="당김" popKey={a.pulls} />
         </div>
         <button onClick={() => setEndOpen(true)}
-                className="press touch mt-6 mb-28 flex w-full items-center justify-center gap-2 rounded-2xl bg-ink py-3.5 font-semibold text-white">
+                className="press touch mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-ink py-3.5 font-semibold text-white">
           <Square size={16} /> 산책 종료
         </button>
+        <p className="mt-3 mb-28 text-center text-[11px] leading-relaxed text-muted">
+          원격 정지는 보조 수단입니다. 긴급 상황에서는 로봇 본체의 물리 정지 버튼을 사용하세요.
+        </p>
       </div>
 
       <EstopButton robotId={1} disabled={state === "offline"} />
